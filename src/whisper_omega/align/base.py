@@ -277,6 +277,9 @@ def resolve_alignment_language(language: str | None) -> str | None:
 
 
 def _prepare_word_for_alignment(text: str, resolved_language: str) -> str:
+    generic_mapped = _alignment_text_override(text)
+    if generic_mapped:
+        return _normalize_word(generic_mapped)
     if resolved_language == "ja-kana":
         return _romanize_japanese_word(text)
     if resolved_language.startswith("romanized:"):
@@ -367,18 +370,24 @@ def _romanize_japanese_word(text: str) -> str:
 
 def _japanese_reading_override(text: str) -> str | None:
     mapping_path = os.environ.get("OMEGA_ALIGNMENT_JA_READING_MAP")
+    return _load_text_mapping(mapping_path).get(text)
+
+
+def _alignment_text_override(text: str) -> str | None:
+    mapping_path = os.environ.get("OMEGA_ALIGNMENT_TEXT_MAP")
+    return _load_text_mapping(mapping_path).get(text)
+
+
+def _load_text_mapping(mapping_path: str | None) -> dict[str, str]:
     if not mapping_path:
-        return None
+        return {}
     try:
         payload = json.loads(Path(mapping_path).read_text(encoding="utf-8"))
     except Exception:
-        return None
+        return {}
     if not isinstance(payload, dict):
-        return None
-    reading = payload.get(text)
-    if isinstance(reading, str):
-        return reading
-    return None
+        return {}
+    return {key: value for key, value in payload.items() if isinstance(key, str) and isinstance(value, str)}
 
 
 def _apply_spans(

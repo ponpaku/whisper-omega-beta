@@ -190,6 +190,36 @@ class AlignTests(unittest.TestCase):
         self.assertFalse(outcome.backend_errors)
         self.assertEqual(outcome.words[0].text, "日本語")
 
+    def test_wav2vec2_backend_can_use_generic_text_map_for_non_latin_word(self) -> None:
+        fake_torchaudio = types.SimpleNamespace(
+            pipelines=types.SimpleNamespace(MMS_FA=FakeBundle()),
+            functional=types.SimpleNamespace(resample=lambda waveform, sample_rate, target_rate: waveform),
+            load=lambda path: (torch.ones((1, 16000)), 16000),
+        )
+        fake_torch = types.SimpleNamespace(inference_mode=contextlib.nullcontext)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mapping_path = f"{tmpdir}/text_map.json"
+            with open(mapping_path, "w", encoding="utf-8") as handle:
+                json.dump({"Привет": "privet"}, handle, ensure_ascii=False)
+
+            backend = Wav2Vec2AlignmentBackend()
+            with patch.dict(
+                "os.environ",
+                {"OMEGA_ALIGNMENT_TEXT_MAP": mapping_path, "OMEGA_ALIGNMENT_ROMANIZER": "ignored"},
+                clear=False,
+            ), patch.dict("sys.modules", {"torchaudio": fake_torchaudio, "torch": fake_torch}):
+                outcome = backend.align(
+                    audio_path=__file__,
+                    text="Привет",
+                    segments=[Segment(id=0, start=0.0, end=1.0, text="Привет", speaker=None)],
+                    words=[Word(text="Привет", start=0.0, end=0.5, speaker=None)],
+                    language="ru",
+                )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.words[0].text, "Привет")
+
 
 if __name__ == "__main__":
     unittest.main()

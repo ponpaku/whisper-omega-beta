@@ -268,7 +268,8 @@ def setup_align() -> None:
         "4. omega transcribe sample.wav --require-alignment --align-backend wav2vec2 --emit-result-json always",
         "5. Use a latin-script language, leave --language unset for auto-latin mode, or use kana-only Japanese",
         "6. For Japanese with kanji, optionally generate a stub via scripts/build_ja_reading_map.py and set OMEGA_ALIGNMENT_JA_READING_MAP",
-        "7. For other non-latin languages, set OMEGA_ALIGNMENT_ROMANIZER to an external romanizer command",
+        "7. For any language, you can also set OMEGA_ALIGNMENT_TEXT_MAP to a JSON word->normalized-token map",
+        "8. For other non-latin languages, set OMEGA_ALIGNMENT_ROMANIZER to an external romanizer command",
     ]
     click.echo("\n".join(lines))
 

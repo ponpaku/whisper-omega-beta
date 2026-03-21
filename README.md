@@ -49,6 +49,7 @@ The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `
 For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
 Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.
 For Japanese words that include kanji, you can set `OMEGA_ALIGNMENT_JA_READING_MAP` to a JSON file that maps transcript words to kana readings before alignment.
+For any language, `OMEGA_ALIGNMENT_TEXT_MAP` can provide a generic JSON word->normalized-token override before the backend tokenizer runs.
 `scripts/build_ja_reading_map.py` can generate a starter JSON map from a Japanese fixture `manifest.json` so you only need to fill in the readings.
 If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non-latin transcripts can be pre-romanized before alignment.
 
