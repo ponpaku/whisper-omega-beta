@@ -1,0 +1,22 @@
+[
+  {
+    "file": "empty.wav",
+    "expected_error_code": "AUDIO_DECODE_FAILURE",
+    "note": "zero-byte wav placeholder"
+  },
+  {
+    "file": "truncated.wav",
+    "expected_error_code": "AUDIO_DECODE_FAILURE",
+    "note": "truncated wav payload"
+  },
+  {
+    "file": "not_audio.wav",
+    "expected_error_code": "AUDIO_DECODE_FAILURE",
+    "note": "plain-text file with wav extension"
+  },
+  {
+    "file": "missing.wav",
+    "expected_error_code": "AUDIO_DECODE_FAILURE",
+    "note": "intentionally absent path for missing-file validation"
+  }
+]

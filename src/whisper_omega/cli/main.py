@@ -255,3 +255,54 @@ def setup_core() -> None:
         "4. omega transcribe sample.wav --output-format json --emit-result-json always",
     ]
     click.echo("\n".join(lines))
+
+
+@setup.command(name="align")
+def setup_align() -> None:
+    """Show the documented setup path for forced alignment."""
+    lines = [
+        "Alignment setup path:",
+        "1. python3 -m pip install -e .",
+        "2. python3 -m pip install '.[align]'",
+        "3. omega doctor",
+        "4. omega transcribe sample.wav --require-alignment --align-backend wav2vec2 --emit-result-json always",
+        "5. Use a latin-script language or leave --language unset for auto-latin mode",
+        "6. For non-latin languages, set OMEGA_ALIGNMENT_ROMANIZER to an external romanizer command",
+    ]
+    click.echo("\n".join(lines))
+
+
+@setup.command(name="diarize")
+def setup_diarize() -> None:
+    """Show the documented setup path for diarization."""
+    lines = [
+        "Diarization setup path:",
+        "1. python3 -m pip install -e .",
+        "2. python3 -m pip install '.[diarize]'",
+        "3. Ensure ffmpeg and torchcodec are available for audio decode",
+        "4. export HF_TOKEN=...",
+        "5. omega doctor",
+        "6. omega transcribe sample.wav --require-diarization --diarize-backend pyannote --emit-result-json always",
+    ]
+    click.echo("\n".join(lines))
+
+
+@setup.command(name="validation")
+def setup_validation() -> None:
+    """Show the documented setup path for validation assets and reports."""
+    lines = [
+        "Validation setup path:",
+        "1. python3 -m pip install '.[validation]'",
+        "2. Prepare dataset folders for D1-D5",
+        "3. python3 scripts/export_google_fleurs_fixtures.py D1_SHORT_JA fixtures/d1_short_ja --count 5",
+        "4. python3 scripts/export_google_fleurs_fixtures.py D2_SHORT_EN fixtures/d2_short_en --count 5",
+        "5. python3 scripts/build_long_fixture.py fixtures/d3_long_mixed/d3_concat_01.wav <wav1> <wav2> ... --gap-ms 500",
+        "6. python3 scripts/build_diarization_fixture.py fixtures/d2_short_en/<speaker-a>.wav fixtures/d2_short_en/<speaker-b>.wav fixtures/d4_diarization/d4_mix_01.wav",
+        "7. python3 scripts/build_failure_fixtures.py fixtures/d1_short_ja/<source>.wav fixtures/d5_failure_injection",
+        "8. python3 scripts/build_dataset_manifest.py <dataset-dir> --dataset-id D1_SHORT_JA",
+        "9. python3 scripts/generate_validation_report.py --output validation-report.json",
+        "10. Fill docs/VALIDATION_DATASET_MANIFEST.md and docs/BENCHMARK_TEMPLATE.md",
+        "11. omega doctor --json-output",
+        "12. Run docs/VALIDATION_CHECKLIST.md end-to-end",
+    ]
+    click.echo("\n".join(lines))

@@ -42,6 +42,33 @@ MVP 正式版では以下を固定する。
 - 話者数
 - expected notes
 
+補助導線:
+- `docs/DATASET_MANIFEST_TEMPLATE.md`
+- `docs/VALIDATION_DATASET_MANIFEST.md`
+- `docs/BENCHMARK_TEMPLATE.md`
+- `docs/VALIDATION_DATASET_CANDIDATES.md`
+- `scripts/export_google_fleurs_fixtures.py`
+- `scripts/build_long_fixture.py`
+- `scripts/build_diarization_fixture.py`
+- `scripts/build_failure_fixtures.py`
+- `scripts/build_dataset_manifest.py`
+- `scripts/generate_validation_report.py`
+
+### 4.2 2026-03-21 時点の推奨候補
+- `D1_SHORT_JA`: `google/fleurs` `ja_jp` 由来の短尺 fixture
+- `D2_SHORT_EN`: `google/fleurs` `en_us` 由来の短尺 fixture
+- `D4_DIARIZATION`: `google/fleurs` 由来の multi-speaker synthetic mixture
+- `D5_FAILURE_INJECTION`: `speech_commands` または `google/fleurs` 由来 fixture
+- `D3_LONG_MIXED`: 当面は `facebook/voxpopuli` を fallback 候補としつつ、local provisional fixture は `build_long_fixture.py` で連結生成する
+
+### 4.3 2026-03-21 時点で固定済みの local fixture
+- `D1_SHORT_JA`: `fixtures/d1_short_ja` に 5 file export 済み
+- `D2_SHORT_EN`: `fixtures/d2_short_en` に 5 file export 済み
+- `D3_LONG_MIXED`: `fixtures/d3_long_mixed/d3_concat_01.wav` を local provisional long-form input として生成済み
+- `D4_DIARIZATION`: `fixtures/d4_diarization/d4_mix_01.wav` を local synthetic mixture として生成済み
+- `D5_FAILURE_INJECTION`: `fixtures/d5_failure_injection` に decode failure fixture を生成済み
+- SHA256 / duration は `docs/VALIDATION_DATASET_MANIFEST.md` に固定
+
 ## 5. benchmark 種別
 - `setup`: download/setup を含む
 - `cold_start`: model download を除外し、初回ロードを含む

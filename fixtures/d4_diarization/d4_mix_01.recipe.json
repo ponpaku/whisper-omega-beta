@@ -1,0 +1,19 @@
+{
+  "output_file": "d4_mix_01.wav",
+  "sample_rate": 16000,
+  "offset_ms": 1200,
+  "speakers": [
+    {
+      "id": "SPEAKER_A",
+      "source": "12952903060751652532.wav",
+      "start": 0.0,
+      "end": 10.58
+    },
+    {
+      "id": "SPEAKER_B",
+      "source": "15158676295442294624.wav",
+      "start": 1.2,
+      "end": 12.66
+    }
+  ]
+}

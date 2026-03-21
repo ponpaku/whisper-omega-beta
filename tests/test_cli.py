@@ -10,6 +10,7 @@ from unittest.mock import patch
 from click.testing import CliRunner
 
 from whisper_omega.asr.base import ASRBackend, BackendTranscription
+from whisper_omega.align.base import UnavailableWav2Vec2Backend
 from whisper_omega.cli.main import main
 from whisper_omega.diarize.base import DiarizationBackend, DiarizationOutcome
 from whisper_omega.runtime.models import BackendError, Segment, Word
@@ -144,6 +145,7 @@ class CliTests(unittest.TestCase):
                     align_backend="wav2vec2",
                 ),
                 asr_backend=backend,
+                alignment_backend=UnavailableWav2Vec2Backend(),
             )
             service.transcribe.side_effect = real_service.transcribe
             service.write_output.side_effect = real_service.write_output
@@ -272,6 +274,67 @@ class CliTests(unittest.TestCase):
             payload = json.loads(output_path.read_text(encoding="utf-8"))
             self.assertEqual(payload["status"], "failure")
 
+    def test_emit_result_json_on_failure_only_suppresses_success_json(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(policy=PolicyConfig(runtime_policy="permissive", device="cpu")),
+                asr_backend=StubBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--emit-result-json",
+                    "on-failure",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertNotIn('"schema_version"', result.output)
+        self.assertIn("transcription completed", result.output)
+
+    def test_emit_result_json_on_failure_emits_failure_json(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(policy=PolicyConfig(runtime_policy="permissive", device="cpu")),
+                asr_backend=MissingBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--emit-result-json",
+                    "on-failure",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 30)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["status"], "failure")
+        self.assertIn("failure:", result.output)
+
     def test_whisperx_frontend_maps_legacy_flags(self) -> None:
         with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
             service = service_cls.return_value
@@ -318,6 +381,7 @@ class CliTests(unittest.TestCase):
                     align_backend="wav2vec2",
                 ),
                 asr_backend=StubBackend(),
+                alignment_backend=UnavailableWav2Vec2Backend(),
             )
             service.transcribe.side_effect = real_service.transcribe
             service.write_output.side_effect = real_service.write_output
@@ -374,6 +438,35 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(os.environ.get("HF_TOKEN"), "secret-token")
+
+    def test_setup_align_lists_alignment_steps(self) -> None:
+        result = self.runner.invoke(main, ["setup", "align"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Alignment setup path:", result.output)
+        self.assertIn(".[align]", result.output)
+        self.assertIn("OMEGA_ALIGNMENT_ROMANIZER", result.output)
+
+    def test_setup_validation_lists_manifest_steps(self) -> None:
+        result = self.runner.invoke(main, ["setup", "validation"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Validation setup path:", result.output)
+        self.assertIn(".[validation]", result.output)
+        self.assertIn("build_dataset_manifest.py", result.output)
+        self.assertIn("export_google_fleurs_fixtures.py", result.output)
+        self.assertIn("build_long_fixture.py", result.output)
+        self.assertIn("build_diarization_fixture.py", result.output)
+        self.assertIn("build_failure_fixtures.py", result.output)
+        self.assertIn("generate_validation_report.py", result.output)
+
+    def test_setup_diarize_lists_hf_token_step(self) -> None:
+        result = self.runner.invoke(main, ["setup", "diarize"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Diarization setup path:", result.output)
+        self.assertIn("HF_TOKEN", result.output)
+        self.assertIn("ffmpeg", result.output.lower())
 
 
 if __name__ == "__main__":
