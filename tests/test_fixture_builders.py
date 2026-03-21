@@ -49,8 +49,10 @@ class FixtureBuilderTests(unittest.TestCase):
         output_dir = self.root / "failures"
         manifest = build_failure_fixtures(self.speaker_a, output_dir)
 
-        self.assertEqual(len(manifest), 4)
-        self.assertEqual(manifest[-1]["file"], "missing.wav")
+        self.assertEqual(len(manifest), 6)
+        self.assertEqual(manifest[3]["file"], "missing.wav")
+        self.assertEqual(manifest[4]["expected_error_code"], "OUTPUT_PERMISSION_DENIED")
+        self.assertEqual(manifest[5]["expected_error_code"], "DEPENDENCY_MISSING")
         self.assertEqual((output_dir / "empty.wav").read_bytes(), b"")
         saved_manifest = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(saved_manifest[0]["expected_error_code"], "AUDIO_DECODE_FAILURE")

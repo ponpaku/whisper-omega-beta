@@ -50,6 +50,20 @@ def build_failure_fixtures(source_wav: Path, output_dir: Path) -> list[dict]:
             "note": "intentionally absent path for missing-file validation",
         }
     )
+    manifest.append(
+        {
+            "file": "permission_denied_output_dir",
+            "expected_error_code": "OUTPUT_PERMISSION_DENIED",
+            "note": "scenario fixture: use a non-writable output directory when writing results",
+        }
+    )
+    manifest.append(
+        {
+            "file": "dependency_missing_core",
+            "expected_error_code": "DEPENDENCY_MISSING",
+            "note": "scenario fixture: run without faster-whisper installed to confirm dependency-classified failure",
+        }
+    )
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
 

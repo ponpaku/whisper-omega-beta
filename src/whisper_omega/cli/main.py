@@ -199,6 +199,11 @@ def whisperx(
     """WhisperX compatibility frontend."""
     if highlight_words:
         click.echo("warning: --highlight_words is accepted for compatibility but currently has no effect", err=True)
+    if align_model:
+        click.echo(
+            f"warning: --align_model={align_model} requests alignment but the exact WhisperX model id is not used directly",
+            err=True,
+        )
     if hf_token and not os.environ.get("HF_TOKEN"):
         os.environ["HF_TOKEN"] = hf_token
     compat = map_whisperx_options(

@@ -66,6 +66,8 @@ Alignment language/token resolution currently follows this order:
 5. `OMEGA_ALIGNMENT_ROMANIZER` for other non-latin languages
 6. otherwise `ALIGNMENT_LANGUAGE_UNSUPPORTED`
 
+Unsupported alignment inputs now fail machine-readably with `ALIGNMENT_LANGUAGE_UNSUPPORTED`, `ALIGNMENT_TEXT_UNSUPPORTED`, or map validation codes instead of silently falling back.
+
 ## WhisperX Compatibility
 
 | WhisperX flag | whisper-omega status | Notes |
@@ -81,6 +83,13 @@ Alignment language/token resolution currently follows this order:
 | `--highlight_words` | partial | Accepted for compatibility, prints a warning, and currently has no effect |
 
 Full details live in `whisper-omega-plan/specs/appendix_b_compat_v01.md`.
+
+Compatibility handling rules are:
+
+1. Same semantics: supported silently
+2. Mapped but behaviorally different: partial compatibility, optionally with a warning
+3. Accepted but currently no-op: partial compatibility with a warning
+4. Unsatisfied hard requirements: usage error or machine-readable failure, never silent ignore
 
 ## Notes
 
@@ -99,5 +108,6 @@ Full details live in `whisper-omega-plan/specs/appendix_b_compat_v01.md`.
 - `scripts/build_ja_reading_map.py` can generate a starter kanji-reading map for Japanese alignment.
 - `scripts/build_alignment_text_map.py` can generate a starter generic token map for non-latin alignment.
 - `docs/VALIDATION_DATASET_MANIFEST.md` records the current local D1/D2/D3/D4/D5 fixture hashes and durations exported on 2026-03-21.
+- `docs/BENCHMARK_TEMPLATE.md` records the current local smoke benchmark baseline and the command used to reproduce it.
 - Validation, compatibility, and pending design choices are tracked in `IMPLEMENTATION_TASKS.md` and `DECISIONS.md`.
 - Docker scaffolding is available through `Dockerfile`.

@@ -64,9 +64,9 @@ MVP 正式版では以下を固定する。
 ### 4.3 2026-03-21 時点で固定済みの local fixture
 - `D1_SHORT_JA`: `fixtures/d1_short_ja` に 5 file export 済み
 - `D2_SHORT_EN`: `fixtures/d2_short_en` に 5 file export 済み
-- `D3_LONG_MIXED`: `fixtures/d3_long_mixed/d3_concat_01.wav` を local provisional long-form input として生成済み
+- `D3_LONG_MIXED`: `fixtures/d3_long_mixed/d3_concat_01.wav` / `d3_concat_02.wav` を local provisional long-form input として生成済み
 - `D4_DIARIZATION`: `fixtures/d4_diarization/d4_mix_01.wav` / `d4_mix_overlap_01.wav` / `d4_mix_3spk_01.wav` を local synthetic mixture として生成済み
-- `D5_FAILURE_INJECTION`: `fixtures/d5_failure_injection` に decode failure fixture を生成済み
+- `D5_FAILURE_INJECTION`: `fixtures/d5_failure_injection` に decode failure fixture を生成済み。manifest には `OUTPUT_PERMISSION_DENIED` / `DEPENDENCY_MISSING` の scenario fixture も含む
 - SHA256 / duration は `docs/VALIDATION_DATASET_MANIFEST.md` に固定
 
 ## 5. benchmark 種別

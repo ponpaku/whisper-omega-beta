@@ -34,6 +34,7 @@ Local fixture directories:
 | Dataset ID | File | SHA256 | Duration | Language | Speakers | Notes |
 |---|---|---|---|---|---|---|
 | D3_LONG_MIXED | d3_concat_01.wav | cf16fac9223034c2430f1b58bfd0cf706d0cd61163297308e305d5f8d660cd63 | 52.400 | ja+en | 1 | Concatenated from D1/D2 fixture wavs with `gap_ms=500`; see `fixtures/d3_long_mixed/d3_concat_01.recipe.json` |
+| D3_LONG_MIXED | d3_concat_02.wav | 1cf72f3f8e8aa082e21ef72b780e75094a7181037eda968765e09c52e10088ba | 42.000 | ja+en | 1 | Concatenated from alternate D1/D2 fixture wavs with `gap_ms=750`; see `fixtures/d3_long_mixed/d3_concat_02.recipe.json` |
 
 ## D4_DIARIZATION
 
@@ -51,3 +52,5 @@ Local fixture directories:
 | D5_FAILURE_INJECTION | truncated.wav | 00d7638a8265ede65d8caba8969f95933d69110393bed30a46f76dfce5d153a0 |  | n/a | n/a | Expected `AUDIO_DECODE_FAILURE`; truncated from `10411584430488337925.wav` |
 | D5_FAILURE_INJECTION | not_audio.wav | 4308ff42d168ed56f702ee44c7b1c7f18d5de853ba1837c3012b4ca4bfeb32dd |  | n/a | n/a | Expected `AUDIO_DECODE_FAILURE`; plain text with wav extension |
 | D5_FAILURE_INJECTION | missing.wav | n/a |  | n/a | n/a | Expected `AUDIO_DECODE_FAILURE`; intentionally absent path |
+| D5_FAILURE_INJECTION | permission_denied_output_dir | scenario |  | n/a | n/a | Expected `OUTPUT_PERMISSION_DENIED`; use a non-writable output directory while writing result files |
+| D5_FAILURE_INJECTION | dependency_missing_core | scenario |  | n/a | n/a | Expected `DEPENDENCY_MISSING`; run without `faster-whisper` installed |

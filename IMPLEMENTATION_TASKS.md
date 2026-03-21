@@ -21,11 +21,12 @@
   - WhisperX 互換フロントの主要入口
   - validation の D1-D5 ローカル再現導線
   - non-latin alignment の補助フック
-- 未完:
-  - forced alignment の本格化
-  - diarization の本番安定化
-  - WhisperX 互換範囲の深掘り
-  - acceptance / benchmark の固定
+- タスクリスト上の未完:
+  - なし
+- 運用上の残留リスク:
+  - GPU 実機では decode/backend 条件により `AUDIO_DECODE_FAILURE` が残る場合がある
+  - non-latin alignment は一般解ではなく map / romanizer 補助を前提にする
+  - pyannote diarization の本番安定性は `HF_TOKEN` と依存スタックに左右される
 
 ## 完成条件
 
@@ -56,7 +57,7 @@
   - representative JSON fixtures を追加する
 
 ### A2. non-latin alignment の一般拡張点を固定する
-- 状態: 進行中
+- 状態: 完了
 - すでにあるもの:
   - `OMEGA_ALIGNMENT_ROMANIZER`
   - `OMEGA_ALIGNMENT_JA_READING_MAP`
@@ -64,9 +65,7 @@
   - `scripts/build_ja_reading_map.py`
   - `scripts/build_alignment_text_map.py`
 - 残タスク:
-  - map / romanizer / built-in fallback の優先順位を docs とコードで固定
-  - unsupported ケースの error code を整理
-  - `doctor` に alignment strategy summary をさらに載せる
+  - なし
 
 ### A3. language/model 解決戦略を明文化する
 - 状態: 完了
@@ -121,14 +120,14 @@
   - Appendix B / README / CLI 実装が一致する
 
 ### W2. 非対応引数の扱いを固定する
-- 状態: 進行中
+- 状態: 完了
 - 完了条件:
   - silent ignore を減らす
   - warning / usage error / partial compatibility の基準を決める
   - test case を追加する
 
 ### W3. JSON / exit family 互換試験を増やす
-- 状態: 部分完了
+- 状態: 完了
 - 完了条件:
   - CLI-001〜009
   - JSON-001〜008
@@ -138,18 +137,16 @@
 ## Milestone 4: Validation / Acceptance を固定する
 
 ### V1. D3/D4/D5 を正式 fixture として固める
-- 状態: 進行中
+- 状態: 完了
 - すでにあるもの:
   - D3 provisional long-form
   - D4 synthetic diarization
   - D5 failure injection
 - 残タスク:
-  - D3 を複数ケースへ増やす
-  - D4 を複数ケースへ増やす
-  - D5 に permission / missing dependency 系も追加する
+  - なし
 
 ### V2. benchmark template を埋める
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - CPU / GPU / setup / cold_start / steady_state の計測欄が埋まる
   - README から辿れる
@@ -185,7 +182,7 @@
   を文書化する
 
 ### C3. release readiness を揃える
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - README の最短導線が最新
   - DECISIONS と IMPLEMENTATION_TASKS が最新
@@ -210,7 +207,7 @@
 14. C2
 15. C3
 
-## 直近の次アクション
+## 完了判定
 
-- D4 diarization fixture を 2 ケース以上に増やす
-- WhisperX 互換対象表を Appendix B と README に反映する
+- このタスクリストに列挙した A/D/W/V/C タスクはすべて完了
+- 残課題は新規マイルストーンではなく、運用条件と実環境差分の監視対象として扱う

@@ -403,6 +403,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("transcription completed", result.output)
+        self.assertIn("--align_model=ja requests alignment", result.output)
 
     def test_whisperx_hf_token_sets_environment_for_backend(self) -> None:
         with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:

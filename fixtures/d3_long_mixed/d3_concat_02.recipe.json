@@ -1,0 +1,24 @@
+{
+  "output_file": "d3_concat_02.wav",
+  "sample_rate": 16000,
+  "channels": 1,
+  "gap_ms": 750,
+  "duration": 42.0,
+  "inputs": [
+    {
+      "file": "16131823300806444840.wav",
+      "start": 0.0,
+      "end": 12.84
+    },
+    {
+      "file": "8942640175181466228.wav",
+      "start": 13.59,
+      "end": 32.13
+    },
+    {
+      "file": "2812938565630042744.wav",
+      "start": 32.88,
+      "end": 42.0
+    }
+  ]
+}

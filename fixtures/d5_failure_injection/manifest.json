@@ -18,5 +18,15 @@
     "file": "missing.wav",
     "expected_error_code": "AUDIO_DECODE_FAILURE",
     "note": "intentionally absent path for missing-file validation"
+  },
+  {
+    "file": "permission_denied_output_dir",
+    "expected_error_code": "OUTPUT_PERMISSION_DENIED",
+    "note": "scenario fixture: use a non-writable output directory when writing results"
+  },
+  {
+    "file": "dependency_missing_core",
+    "expected_error_code": "DEPENDENCY_MISSING",
+    "note": "scenario fixture: run without faster-whisper installed to confirm dependency-classified failure"
   }
 ]
