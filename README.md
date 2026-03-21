@@ -49,6 +49,7 @@ The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `
 For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
 Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.
 For Japanese words that include kanji, you can set `OMEGA_ALIGNMENT_JA_READING_MAP` to a JSON file that maps transcript words to kana readings before alignment.
+`scripts/build_ja_reading_map.py` can generate a starter JSON map from a Japanese fixture `manifest.json` so you only need to fill in the readings.
 If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non-latin transcripts can be pre-romanized before alignment.
 
 ## Notes
@@ -62,6 +63,7 @@ If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non
 - `scripts/build_long_fixture.py` can concatenate existing fixture wavs into a local D3 long-form validation input.
 - `scripts/build_diarization_fixture.py` can derive a local D4 synthetic mixture from existing mono fixtures.
 - `scripts/build_failure_fixtures.py` can derive a local D5 failure-injection set from an existing wav.
+- `scripts/build_ja_reading_map.py` can generate a starter kanji-reading map for Japanese alignment.
 - `docs/VALIDATION_DATASET_MANIFEST.md` records the current local D1/D2/D3/D4/D5 fixture hashes and durations exported on 2026-03-21.
 - Validation, compatibility, and pending design choices are tracked in `IMPLEMENTATION_TASKS.md` and `DECISIONS.md`.
 - Docker scaffolding is available through `Dockerfile`.
