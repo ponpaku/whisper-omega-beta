@@ -47,6 +47,38 @@ _LATIN_LANGUAGE_HINTS = {
     "tr",
     "vi",
 }
+_HIRAGANA_ROMAJI = {
+    "あ": "a", "い": "i", "う": "u", "え": "e", "お": "o",
+    "か": "ka", "き": "ki", "く": "ku", "け": "ke", "こ": "ko",
+    "さ": "sa", "し": "shi", "す": "su", "せ": "se", "そ": "so",
+    "た": "ta", "ち": "chi", "つ": "tsu", "て": "te", "と": "to",
+    "な": "na", "に": "ni", "ぬ": "nu", "ね": "ne", "の": "no",
+    "は": "ha", "ひ": "hi", "ふ": "fu", "へ": "he", "ほ": "ho",
+    "ま": "ma", "み": "mi", "む": "mu", "め": "me", "も": "mo",
+    "や": "ya", "ゆ": "yu", "よ": "yo",
+    "ら": "ra", "り": "ri", "る": "ru", "れ": "re", "ろ": "ro",
+    "わ": "wa", "を": "o", "ん": "n",
+    "が": "ga", "ぎ": "gi", "ぐ": "gu", "げ": "ge", "ご": "go",
+    "ざ": "za", "じ": "ji", "ず": "zu", "ぜ": "ze", "ぞ": "zo",
+    "だ": "da", "ぢ": "ji", "づ": "zu", "で": "de", "ど": "do",
+    "ば": "ba", "び": "bi", "ぶ": "bu", "べ": "be", "ぼ": "bo",
+    "ぱ": "pa", "ぴ": "pi", "ぷ": "pu", "ぺ": "pe", "ぽ": "po",
+    "ぁ": "a", "ぃ": "i", "ぅ": "u", "ぇ": "e", "ぉ": "o",
+    "ゔ": "vu",
+}
+_HIRAGANA_DIGRAPHS = {
+    "きゃ": "kya", "きゅ": "kyu", "きょ": "kyo",
+    "しゃ": "sha", "しゅ": "shu", "しょ": "sho",
+    "ちゃ": "cha", "ちゅ": "chu", "ちょ": "cho",
+    "にゃ": "nya", "にゅ": "nyu", "にょ": "nyo",
+    "ひゃ": "hya", "ひゅ": "hyu", "ひょ": "hyo",
+    "みゃ": "mya", "みゅ": "myu", "みょ": "myo",
+    "りゃ": "rya", "りゅ": "ryu", "りょ": "ryo",
+    "ぎゃ": "gya", "ぎゅ": "gyu", "ぎょ": "gyo",
+    "じゃ": "ja", "じゅ": "ju", "じょ": "jo",
+    "びゃ": "bya", "びゅ": "byu", "びょ": "byo",
+    "ぴゃ": "pya", "ぴゅ": "pyu", "ぴょ": "pyo",
+}
 
 
 @dataclass(slots=True)
@@ -236,12 +268,16 @@ def resolve_alignment_language(language: str | None) -> str | None:
     base = normalized.split("-", 1)[0]
     if base in _LATIN_LANGUAGE_HINTS:
         return base
+    if base == "ja":
+        return "ja-kana"
     if os.environ.get("OMEGA_ALIGNMENT_ROMANIZER"):
         return f"romanized:{base}"
     return None
 
 
 def _prepare_word_for_alignment(text: str, resolved_language: str) -> str:
+    if resolved_language == "ja-kana":
+        return _romanize_kana(text)
     if resolved_language.startswith("romanized:"):
         return _romanize_word(text)
     return _normalize_word(text)
@@ -263,6 +299,62 @@ def _romanize_word(text: str) -> str:
     except Exception:
         return ""
     return _normalize_word(completed.stdout)
+
+
+def _romanize_kana(text: str) -> str:
+    normalized = []
+    for char in text.strip():
+        if char == "ー":
+            normalized.append(char)
+            continue
+        codepoint = ord(char)
+        if 0x30A1 <= codepoint <= 0x30F6:
+            normalized.append(chr(codepoint - 0x60))
+        else:
+            normalized.append(char)
+    hira = "".join(normalized)
+    if not hira:
+        return ""
+
+    result = []
+    index = 0
+    geminate = False
+    while index < len(hira):
+        char = hira[index]
+        if char in {" ", "\t"}:
+            index += 1
+            continue
+        if char == "っ":
+            geminate = True
+            index += 1
+            continue
+        if char == "ー":
+            if result:
+                last = result[-1]
+                vowel = next((letter for letter in reversed(last) if letter in "aeiou"), "")
+                if vowel:
+                    result.append(vowel)
+            index += 1
+            continue
+        if index + 1 < len(hira):
+            digraph = hira[index : index + 2]
+            mapped = _HIRAGANA_DIGRAPHS.get(digraph)
+            if mapped:
+                if geminate and mapped:
+                    mapped = mapped[0] + mapped
+                    geminate = False
+                result.append(mapped)
+                index += 2
+                continue
+        mapped = _HIRAGANA_ROMAJI.get(char)
+        if mapped is None:
+            return ""
+        if geminate and mapped:
+            mapped = mapped[0] + mapped
+            geminate = False
+        result.append(mapped)
+        index += 1
+    return _normalize_word("".join(result))
 
 
 def _apply_spans(

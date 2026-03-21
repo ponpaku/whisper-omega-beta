@@ -88,17 +88,46 @@ class AlignTests(unittest.TestCase):
 
         self.assertEqual(outcome.backend_errors[0].code, "ALIGNMENT_TEXT_UNSUPPORTED")
 
-    def test_wav2vec2_backend_rejects_unsupported_language(self) -> None:
-        backend = Wav2Vec2AlignmentBackend()
-        outcome = backend.align(
-            audio_path=__file__,
-            text="こんにちは",
-            segments=[Segment(id=0, start=0.0, end=1.0, text="こんにちは", speaker=None)],
-            words=[],
-            language="ja",
+    def test_wav2vec2_backend_supports_kana_japanese_without_external_romanizer(self) -> None:
+        fake_torchaudio = types.SimpleNamespace(
+            pipelines=types.SimpleNamespace(MMS_FA=FakeBundle()),
+            functional=types.SimpleNamespace(resample=lambda waveform, sample_rate, target_rate: waveform),
+            load=lambda path: (torch.ones((1, 16000)), 16000),
         )
+        fake_torch = types.SimpleNamespace(inference_mode=contextlib.nullcontext)
 
-        self.assertEqual(outcome.backend_errors[0].code, "ALIGNMENT_LANGUAGE_UNSUPPORTED")
+        backend = Wav2Vec2AlignmentBackend()
+        with patch.dict("sys.modules", {"torchaudio": fake_torchaudio, "torch": fake_torch}):
+            outcome = backend.align(
+                audio_path=__file__,
+                text="こんにちは",
+                segments=[Segment(id=0, start=0.0, end=1.0, text="こんにちは", speaker=None)],
+                words=[Word(text="こんにちは", start=0.0, end=0.5, speaker=None)],
+                language="ja",
+            )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.words[0].text, "こんにちは")
+
+    def test_wav2vec2_backend_rejects_unsupported_ja_kanji_text(self) -> None:
+        fake_torchaudio = types.SimpleNamespace(
+            pipelines=types.SimpleNamespace(MMS_FA=FakeBundle()),
+            functional=types.SimpleNamespace(resample=lambda waveform, sample_rate, target_rate: waveform),
+            load=lambda path: (torch.ones((1, 16000)), 16000),
+        )
+        fake_torch = types.SimpleNamespace(inference_mode=contextlib.nullcontext)
+
+        backend = Wav2Vec2AlignmentBackend()
+        with patch.dict("sys.modules", {"torchaudio": fake_torchaudio, "torch": fake_torch}):
+            outcome = backend.align(
+                audio_path=__file__,
+                text="日本語",
+                segments=[Segment(id=0, start=0.0, end=1.0, text="日本語", speaker=None)],
+                words=[Word(text="日本語", start=0.0, end=0.5, speaker=None)],
+                language="ja",
+            )
+
+        self.assertEqual(outcome.backend_errors[0].code, "ALIGNMENT_TEXT_UNSUPPORTED")
 
     def test_wav2vec2_backend_can_use_external_romanizer(self) -> None:
         fake_torchaudio = types.SimpleNamespace(

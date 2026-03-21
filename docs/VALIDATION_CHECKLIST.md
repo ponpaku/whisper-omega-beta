@@ -40,8 +40,8 @@
 - `setup validation` は validation 固定化の手順を返す
 - `transcribe` は `faster-whisper` 未導入環境では `DEPENDENCY_MISSING` の JSON failure を返す
 - `faster-whisper` 導入後は CPU 上で end-to-end smoke test が成功する
-- `align` extra 導入後は latin-script 音声に対して `wav2vec2` alignment が成功する
-- `OMEGA_ALIGNMENT_ROMANIZER` 設定時は非 latin transcript を romanize して alignment に流せる
+- `align` extra 導入後は latin-script 音声と kana-only Japanese に対して `wav2vec2` alignment が成功する
+- `OMEGA_ALIGNMENT_ROMANIZER` 設定時はその他の非 latin transcript を romanize して alignment に流せる
 - `pyannote` 導入済みで `HF_TOKEN` 未設定時は `HF_TOKEN_MISSING` の degraded JSON を返す
 - diarization では decode stack として `torchaudio` または `ffmpeg`+`torchcodec` の readiness が確認でき、`torchaudio` 利用時は in-memory waveform 経路も使える
 - diarization では `OMEGA_PYANNOTE_NUM_SPEAKERS` / `MIN_SPEAKERS` / `MAX_SPEAKERS` を speaker hint として backend へ渡せる
