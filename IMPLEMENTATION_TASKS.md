@@ -90,18 +90,17 @@
 ## Milestone 2: Diarization を本番寄りに安定化する
 
 ### D1. pyannote 実行条件を固定する
-- 状態: 進行中
+- 状態: 完了
 - すでにあるもの:
   - `HF_TOKEN` 診断
   - `torchaudio` / `ffmpeg+torchcodec` decode path 診断
   - speaker hint env (`NUM/MIN/MAX`)
+  - diarization runtime failure の auth / model / decode / config 分類
 - 残タスク:
-  - docs に推奨環境組み合わせを固定
-  - failure code を decode / auth / model / config に整理
-  - validation checklist に speaker-hint あり / なしのケースを追加
+  - なし
 
 ### D2. diarization result 契約を強化する
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - `speakers[]` / `segments[].speaker` / `words[].speaker` の整合性テストを追加
   - overlap や speaker assignment edge case の fixture を追加

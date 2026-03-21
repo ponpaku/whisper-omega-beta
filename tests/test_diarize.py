@@ -150,6 +150,64 @@ class DiarizeTests(unittest.TestCase):
 
         self.assertEqual(outcome.backend_errors[0].code, "CONFIG_INVALID")
 
+    def test_invalid_token_is_auth_failure(self) -> None:
+        class FakePipeline:
+            @classmethod
+            def from_pretrained(cls, model_id, token=None):
+                _ = (model_id, token)
+                raise RuntimeError("401 Unauthorized")
+
+        os.environ["HF_TOKEN"] = "secret"
+        os.environ["OMEGA_AUDIO_PATH"] = "dummy.wav"
+        with patch.dict("sys.modules", {"pyannote.audio": types.SimpleNamespace(Pipeline=FakePipeline)}):
+            outcome = UnavailablePyannoteBackend().diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
+                [Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
+            )
+
+        self.assertEqual(outcome.backend_errors[0].code, "DIARIZATION_AUTH_FAILURE")
+        self.assertEqual(outcome.backend_errors[0].category, "configuration")
+
+    def test_missing_model_is_model_unavailable(self) -> None:
+        class FakePipeline:
+            @classmethod
+            def from_pretrained(cls, model_id, token=None):
+                _ = (model_id, token)
+                raise FileNotFoundError("model repository not found")
+
+        os.environ["HF_TOKEN"] = "secret"
+        os.environ["OMEGA_AUDIO_PATH"] = "dummy.wav"
+        with patch.dict("sys.modules", {"pyannote.audio": types.SimpleNamespace(Pipeline=FakePipeline)}):
+            outcome = UnavailablePyannoteBackend().diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
+                [Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
+            )
+
+        self.assertEqual(outcome.backend_errors[0].code, "DIARIZATION_MODEL_UNAVAILABLE")
+        self.assertEqual(outcome.backend_errors[0].category, "backend")
+
+    def test_decode_error_is_runtime_failure(self) -> None:
+        class FakePipeline:
+            @classmethod
+            def from_pretrained(cls, model_id, token=None):
+                _ = (model_id, token)
+                return cls()
+
+            def __call__(self, audio_input, **kwargs):
+                _ = (audio_input, kwargs)
+                raise RuntimeError("ffmpeg decode error")
+
+        os.environ["HF_TOKEN"] = "secret"
+        os.environ["OMEGA_AUDIO_PATH"] = "dummy.wav"
+        with patch.dict("sys.modules", {"pyannote.audio": types.SimpleNamespace(Pipeline=FakePipeline)}):
+            outcome = UnavailablePyannoteBackend().diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
+                [Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
+            )
+
+        self.assertEqual(outcome.backend_errors[0].code, "DIARIZATION_DECODE_FAILURE")
+        self.assertEqual(outcome.backend_errors[0].category, "runtime")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -52,6 +52,7 @@
 - `pyannote` 導入済みで `HF_TOKEN` 未設定時は `HF_TOKEN_MISSING` の degraded JSON を返す
 - diarization では decode stack として `torchaudio` または `ffmpeg`+`torchcodec` の readiness が確認でき、`torchaudio` 利用時は in-memory waveform 経路も使える
 - diarization では `OMEGA_PYANNOTE_NUM_SPEAKERS` / `MIN_SPEAKERS` / `MAX_SPEAKERS` を speaker hint として backend へ渡せる
+- diarization failure は `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` に分類される
 - D1/D2 の実データ fixture は `fixtures/d1_short_ja` / `fixtures/d2_short_en` にローカル export 済み
 - D3 のローカル fixture は `fixtures/d3_long_mixed` に生成できる
 - D4/D5 のローカル fixture は `fixtures/d4_diarization` / `fixtures/d5_failure_injection` に生成できる

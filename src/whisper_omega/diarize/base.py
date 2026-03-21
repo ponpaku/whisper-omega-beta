@@ -122,6 +122,7 @@ class UnavailablePyannoteBackend(DiarizationBackend):
             diarization_input = _load_audio_for_pyannote(audio_path)
             diarization = pipeline(diarization_input, **pipeline_kwargs)
         except Exception as exc:
+            code, category = _classify_pyannote_exception(exc)
             return DiarizationOutcome(
                 segments=segments,
                 words=words,
@@ -129,10 +130,10 @@ class UnavailablePyannoteBackend(DiarizationBackend):
                 backend_errors=[
                     BackendError(
                         backend=self.name,
-                        code="DIARIZATION_BACKEND_UNAVAILABLE",
-                        category="backend",
+                        code=code,
+                        category=category,
                         message=str(exc),
-                        retryable=False,
+                        retryable=category == "runtime",
                     )
                 ],
             )
@@ -200,6 +201,17 @@ def _pyannote_runtime_kwargs() -> dict[str, int]:
     if num_speakers and max_speakers and num_speakers > max_speakers:
         raise ValueError("OMEGA_PYANNOTE_NUM_SPEAKERS cannot be greater than OMEGA_PYANNOTE_MAX_SPEAKERS")
     return kwargs
+
+
+def _classify_pyannote_exception(exc: Exception) -> tuple[str, str]:
+    message = str(exc).lower()
+    if any(token in message for token in ("401", "403", "unauthorized", "forbidden", "invalid token", "authentication", "gated")):
+        return ("DIARIZATION_AUTH_FAILURE", "configuration")
+    if any(token in message for token in ("ffmpeg", "decode", "codec", "unsupported audio", "could not open audio")):
+        return ("DIARIZATION_DECODE_FAILURE", "runtime")
+    if any(token in message for token in ("not found", "repository", "revision", "model", "does not exist")):
+        return ("DIARIZATION_MODEL_UNAVAILABLE", "backend")
+    return ("DIARIZATION_BACKEND_UNAVAILABLE", "backend")
 
 
 def _speaker_for_interval(start: float, end: float, speaker_turns: list[tuple[float, float, str]]) -> str | None:

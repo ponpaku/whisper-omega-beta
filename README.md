@@ -45,6 +45,8 @@ Optional extras:
 ```
 
 For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`. The backend prefers in-memory waveform loading via `torchaudio` when available, which helps avoid some decode-stack issues. You can also provide `OMEGA_PYANNOTE_NUM_SPEAKERS`, `OMEGA_PYANNOTE_MIN_SPEAKERS`, or `OMEGA_PYANNOTE_MAX_SPEAKERS` to constrain the diarization search space.
+Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; if `torchaudio` is unavailable, fall back to `ffmpeg` + `torchcodec`.
+Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID`.
 The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `--align_model` to alignment-required execution.
 For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
 Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.

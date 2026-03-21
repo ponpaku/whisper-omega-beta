@@ -151,12 +151,19 @@ class TranscriptionResult:
     def __post_init__(self) -> None:
         if self.schema_version != "1.0.0":
             raise ValueError("schema_version must be 1.0.0")
+        speaker_ids = [speaker.id for speaker in self.speakers]
+        if len(speaker_ids) != len(set(speaker_ids)):
+            raise ValueError("speakers must not contain duplicate ids")
         for segment in self.segments:
             if segment.speaker == "":
                 raise ValueError("segment speaker must be null or non-empty")
+            if segment.speaker is not None and segment.speaker not in speaker_ids:
+                raise ValueError("segment speaker must exist in speakers")
         for word in self.words:
             if word.speaker == "":
                 raise ValueError("word speaker must be null or non-empty")
+            if word.speaker is not None and word.speaker not in speaker_ids:
+                raise ValueError("word speaker must exist in speakers")
         if self.status == "success":
             if self.error_code is not None or self.error_category is not None or self.backend_errors:
                 raise ValueError("success result cannot carry errors")
