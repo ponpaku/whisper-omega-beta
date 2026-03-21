@@ -1,0 +1,421 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/whisper-omega/result-1.0.0.schema.json",
+  "title": "whisper-omega result schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "text",
+    "language",
+    "segments",
+    "words",
+    "speakers",
+    "metadata"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "degraded",
+        "failure"
+      ]
+    },
+    "text": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "minLength": 0
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/segment"
+      }
+    },
+    "words": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/word"
+      }
+    },
+    "speakers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/speaker"
+      }
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "error_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "error_category": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        null,
+        "usage",
+        "dependency",
+        "configuration",
+        "runtime",
+        "backend",
+        "validation",
+        "internal"
+      ]
+    },
+    "backend_errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/backend_error"
+      },
+      "default": []
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "success"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "error_code": {
+            "type": "null"
+          },
+          "error_category": {
+            "type": "null"
+          },
+          "backend_errors": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failure"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error_code",
+          "error_category"
+        ],
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "error_category": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "number"
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "start",
+        "end",
+        "text",
+        "speaker"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "start": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "end": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "text": {
+          "type": "string"
+        },
+        "speaker": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "avg_logprob": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "word": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "start",
+        "end",
+        "speaker"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "end": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "speaker": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "speaker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "start",
+        "end"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "end": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asr_backend",
+        "align_backend",
+        "diarization_backend",
+        "device",
+        "requested_device",
+        "actual_device",
+        "fallbacks",
+        "requested_features",
+        "completed_features",
+        "failed_features"
+      ],
+      "properties": {
+        "asr_backend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "align_backend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "diarization_backend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "device": {
+          "type": "string",
+          "enum": [
+            "cpu",
+            "cuda"
+          ]
+        },
+        "requested_device": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "cpu",
+            "cuda"
+          ]
+        },
+        "actual_device": {
+          "type": "string",
+          "enum": [
+            "cpu",
+            "cuda"
+          ]
+        },
+        "fallbacks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fallback"
+          },
+          "default": []
+        },
+        "requested_features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "asr",
+              "vad",
+              "alignment",
+              "diarization",
+              "subtitle_export"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "completed_features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "asr",
+              "vad",
+              "alignment",
+              "diarization",
+              "subtitle_export"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "failed_features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "asr",
+              "vad",
+              "alignment",
+              "diarization",
+              "subtitle_export"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "from",
+        "to",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "device",
+            "backend",
+            "feature",
+            "quality"
+          ]
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "backend_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend",
+        "code",
+        "category",
+        "message"
+      ],
+      "properties": {
+        "backend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "usage",
+            "dependency",
+            "configuration",
+            "runtime",
+            "backend",
+            "validation",
+            "internal"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}

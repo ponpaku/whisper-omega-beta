@@ -1,0 +1,11 @@
+.venv/
+.venv-system/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+tmp_smoke.wav

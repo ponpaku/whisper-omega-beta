@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whisper-omega"
+version = "0.1.0"
+description = "WhisperX-compatible transcription CLI foundation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["click>=8.0"]
+
+[project.optional-dependencies]
+core = ["faster-whisper>=1.2.1"]
+diarize = ["pyannote.audio>=4.0.4"]
+full = ["faster-whisper>=1.2.1", "pyannote.audio>=4.0.4"]
+
+[project.scripts]
+omega = "whisper_omega.cli.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
