@@ -155,7 +155,7 @@
   - README から辿れる
 
 ### V3. validation report を smoke 付きで固定する
-- 状態: 部分完了
+- 状態: 完了
 - 完了条件:
   - doctor
   - full unittest
@@ -167,7 +167,7 @@
 ## Milestone 5: 契約と運用の仕上げ
 
 ### C1. representative JSON fixtures を追加する
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - success
   - degraded alignment
@@ -176,7 +176,7 @@
   の fixture があり schema validate を通る
 
 ### C2. Python API 契約を固定する
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - public entrypoint
   - example

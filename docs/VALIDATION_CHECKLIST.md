@@ -19,6 +19,7 @@
 - `python3 scripts/build_failure_fixtures.py fixtures/d1_short_ja/10411584430488337925.wav fixtures/d5_failure_injection`
 - `python3 scripts/generate_validation_report.py --output validation-report.json`
 - `python3 scripts/generate_validation_report.py --include-alignment-smoke --output validation-report.json`
+- `python3 scripts/generate_validation_report.py --include-alignment-smoke --include-diarization-smoke --output validation-report.json`
 - `PYTHONPATH=src python3 -m whisper_omega setup core`
 - `PYTHONPATH=src python3 -m whisper_omega setup validation`
 - `PYTHONPATH=src python3 -m whisper_omega transcribe <tmp.wav> --device cpu --emit-result-json always`
@@ -38,6 +39,7 @@
 - `build_failure_fixtures.py` は D5_FAILURE_INJECTION 向けの decode failure fixture を作れる
 - `generate_validation_report.py` は doctor / unittest / smoke の結果を JSON へまとめられる
 - `run_alignment_smoke.py` は `fixtures/d2_short_en/manifest.json` と `fixtures/d1_short_ja/manifest.json` を使って alignment routing smoke を返せる
+- `run_diarization_smoke.py` は `fixtures/d4_diarization/*.recipe.json` を使って diarization assignment smoke を返せる
 - `docs/VALIDATION_DATASET_CANDIDATES.md` は Google-first の dataset 候補を示す
 - `docs/VALIDATION_DATASET_MANIFEST.md` は D1/D2 の実際の local fixture hash / duration を固定する
 - `setup core` は documented path を返す

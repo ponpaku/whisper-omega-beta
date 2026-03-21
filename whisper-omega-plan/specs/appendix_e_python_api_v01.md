@@ -9,8 +9,7 @@
 MVP の主要 entrypoint は以下とする。
 
 ```python
-from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
-from whisper_omega.runtime.policy import PolicyConfig
+from whisper_omega import PolicyConfig, ServiceConfig, TranscriptionService, transcribe_file
 ```
 
 最小利用例:
@@ -22,6 +21,12 @@ config = ServiceConfig(
 )
 service = TranscriptionService(config)
 result = service.transcribe(Path("sample.wav"))
+```
+
+または facade:
+
+```python
+result = transcribe_file("sample.wav", device="cpu", runtime_policy="permissive")
 ```
 
 ## 3. 入力契約
@@ -63,4 +68,3 @@ result = service.transcribe(Path("sample.wav"))
 - 高水準 `transcribe()` facade
 - dataclass からの安定 import path 固定
 - 例外ポリシーの明文化
-

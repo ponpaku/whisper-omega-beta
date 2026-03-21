@@ -90,6 +90,7 @@ Full details live in `whisper-omega-plan/specs/appendix_b_compat_v01.md`.
 - `omega doctor` also reports whether alignment maps and pyannote speaker-hint env vars are configured.
 - `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
 - `scripts/run_alignment_smoke.py` runs fixture-backed alignment routing checks for `D1_SHORT_JA` and `D2_SHORT_EN`.
+- `scripts/run_diarization_smoke.py` runs fixture-backed diarization assignment checks for the current D4 mixes.
 - `docs/VALIDATION_DATASET_CANDIDATES.md` lists Google-first validation dataset candidates.
 - `scripts/export_google_fleurs_fixtures.py` can export local D1/D2 fixture wavs from `google/fleurs`, including a direct repo fallback for older `datasets` versions.
 - `scripts/build_long_fixture.py` can concatenate existing fixture wavs into a local D3 long-form validation input.

@@ -28,7 +28,11 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> dict:
     }
 
 
-def build_report(include_smoke: bool, include_alignment_smoke: bool = False) -> dict:
+def build_report(
+    include_smoke: bool,
+    include_alignment_smoke: bool = False,
+    include_diarization_smoke: bool = False,
+) -> dict:
     python_exe = sys.executable
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(ROOT / "src"))
@@ -75,6 +79,7 @@ def build_report(include_smoke: bool, include_alignment_smoke: bool = False) -> 
         },
         "smoke": None,
         "alignment_smoke": None,
+        "diarization_smoke": None,
     }
 
     if include_smoke:
@@ -112,6 +117,27 @@ def build_report(include_smoke: bool, include_alignment_smoke: bool = False) -> 
             "stderr": alignment_smoke.stderr,
         }
 
+    if include_diarization_smoke:
+        diarization_smoke = subprocess.run(
+            [python_exe, "scripts/run_diarization_smoke.py"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        diarization_smoke_payload = None
+        if diarization_smoke.returncode == 0:
+            try:
+                diarization_smoke_payload = json.loads(diarization_smoke.stdout)
+            except json.JSONDecodeError:
+                diarization_smoke_payload = None
+        report["diarization_smoke"] = {
+            "returncode": diarization_smoke.returncode,
+            "payload": diarization_smoke_payload,
+            "stdout": diarization_smoke.stdout,
+            "stderr": diarization_smoke.stderr,
+        }
+
     return report
 
 
@@ -123,10 +149,19 @@ def main() -> int:
         action="store_true",
         help="Run scripts/run_alignment_smoke.py as part of the report.",
     )
+    parser.add_argument(
+        "--include-diarization-smoke",
+        action="store_true",
+        help="Run scripts/run_diarization_smoke.py as part of the report.",
+    )
     parser.add_argument("--output", type=Path, help="Optional output path for the report JSON.")
     args = parser.parse_args()
 
-    report = build_report(include_smoke=args.include_smoke, include_alignment_smoke=args.include_alignment_smoke)
+    report = build_report(
+        include_smoke=args.include_smoke,
+        include_alignment_smoke=args.include_alignment_smoke,
+        include_diarization_smoke=args.include_diarization_smoke,
+    )
     payload = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         args.output.write_text(payload, encoding="utf-8")
