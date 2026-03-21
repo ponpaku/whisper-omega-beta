@@ -59,6 +59,7 @@ If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non
 - Real transcription requires the optional `faster-whisper` dependency.
 - Without it, `omega transcribe` returns a machine-readable dependency failure instead of crashing.
 - `omega doctor` now reports known issue codes and recommended actions for missing runtime pieces.
+- `omega doctor` also reports whether alignment maps and pyannote speaker-hint env vars are configured.
 - `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
 - `docs/VALIDATION_DATASET_CANDIDATES.md` lists Google-first validation dataset candidates.
 - `scripts/export_google_fleurs_fixtures.py` can export local D1/D2 fixture wavs from `google/fleurs`, including a direct repo fallback for older `datasets` versions.

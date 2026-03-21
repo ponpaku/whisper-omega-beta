@@ -27,7 +27,7 @@
 ## 現在の期待結果
 
 - テストは green
-- `doctor` は Python / platform / `faster-whisper` / `ctranslate2` / `torch` / `torchaudio` / `torchcodec` / `nvidia-smi` / alignment・diarization readiness / decode backend / recommended actions を返す
+- `doctor` は Python / platform / `faster-whisper` / `ctranslate2` / `torch` / `torchaudio` / `torchcodec` / `nvidia-smi` / alignment・diarization readiness / decode backend / alignment map 設定 / pyannote speaker hint / recommended actions を返す
 - `build_dataset_manifest.py` は dataset file / SHA256 / duration の markdown 行を生成できる
 - `export_google_fleurs_fixtures.py` は `google/fleurs` から D1/D2 候補 fixture をローカル wav に書き出せる
 - `build_long_fixture.py` は既存 fixture から D3_LONG_MIXED 向け long-form wav と recipe JSON を作れる

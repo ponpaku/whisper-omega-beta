@@ -112,7 +112,13 @@ class ContractTests(unittest.TestCase):
             "alignment_ready",
             "alignment_issue_code",
             "alignment_romanizer_configured",
+            "alignment_text_map_configured",
+            "alignment_ja_reading_map_configured",
+            "alignment_map_issue_code",
             "alignment_language_strategy",
+            "pyannote_num_speakers",
+            "pyannote_min_speakers",
+            "pyannote_max_speakers",
             "cache_dir",
             "cache_dir_writable",
             "detected_device",
@@ -140,6 +146,26 @@ class ContractTests(unittest.TestCase):
 
         self.assertTrue(report["diarization_decode_ready"])
         self.assertEqual(report["diarization_decode_backend"], "torchaudio")
+
+    def test_doctor_reports_alignment_maps_and_speaker_hints(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "OMEGA_ALIGNMENT_TEXT_MAP": __file__,
+                "OMEGA_ALIGNMENT_JA_READING_MAP": __file__,
+                "OMEGA_PYANNOTE_NUM_SPEAKERS": "2",
+                "OMEGA_PYANNOTE_MIN_SPEAKERS": "1",
+                "OMEGA_PYANNOTE_MAX_SPEAKERS": "3",
+            },
+            clear=False,
+        ):
+            report = DoctorReport.collect().to_dict()
+
+        self.assertTrue(report["alignment_text_map_configured"])
+        self.assertTrue(report["alignment_ja_reading_map_configured"])
+        self.assertEqual(report["pyannote_num_speakers"], 2)
+        self.assertEqual(report["pyannote_min_speakers"], 1)
+        self.assertEqual(report["pyannote_max_speakers"], 3)
 
 
 if __name__ == "__main__":

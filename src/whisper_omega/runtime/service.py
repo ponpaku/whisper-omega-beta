@@ -318,6 +318,12 @@ class DoctorReport:
     alignment_ready: bool
     alignment_issue_code: str | None
     alignment_romanizer_configured: bool
+    alignment_text_map_configured: bool
+    alignment_ja_reading_map_configured: bool
+    alignment_map_issue_code: str | None
+    pyannote_num_speakers: int | None
+    pyannote_min_speakers: int | None
+    pyannote_max_speakers: int | None
     cache_dir: str
     cache_dir_writable: bool
     detected_device: str
@@ -351,6 +357,26 @@ class DoctorReport:
             diarization_issue_code = "DIARIZATION_DECODE_UNAVAILABLE"
         alignment_ready, alignment_issue_code = alignment_backend.capability()
         alignment_romanizer_configured = bool(os.environ.get("OMEGA_ALIGNMENT_ROMANIZER"))
+        alignment_text_map_configured = False
+        alignment_ja_reading_map_configured = False
+        alignment_map_issue_code = None
+        text_map_path = os.environ.get("OMEGA_ALIGNMENT_TEXT_MAP")
+        if text_map_path:
+            text_map = Path(text_map_path)
+            if text_map.is_file() and os.access(text_map, os.R_OK):
+                alignment_text_map_configured = True
+            else:
+                alignment_map_issue_code = "ALIGNMENT_TEXT_MAP_INVALID"
+        ja_map_path = os.environ.get("OMEGA_ALIGNMENT_JA_READING_MAP")
+        if ja_map_path:
+            ja_map = Path(ja_map_path)
+            if ja_map.is_file() and os.access(ja_map, os.R_OK):
+                alignment_ja_reading_map_configured = True
+            else:
+                alignment_map_issue_code = alignment_map_issue_code or "ALIGNMENT_TEXT_MAP_INVALID"
+        pyannote_num_speakers = _int_env("OMEGA_PYANNOTE_NUM_SPEAKERS")
+        pyannote_min_speakers = _int_env("OMEGA_PYANNOTE_MIN_SPEAKERS")
+        pyannote_max_speakers = _int_env("OMEGA_PYANNOTE_MAX_SPEAKERS")
         torch_cuda = cuda_available() if torch_available else False
         has_nvidia_smi = shutil.which("nvidia-smi") is not None
         nvidia_summary = "not available"
@@ -374,6 +400,8 @@ class DoctorReport:
             known_issue_codes.append(diarization_issue_code)
         if alignment_issue_code:
             known_issue_codes.append(alignment_issue_code)
+        if alignment_map_issue_code:
+            known_issue_codes.append(alignment_map_issue_code)
         if not cache_dir_writable:
             known_issue_codes.append("OUTPUT_PERMISSION_DENIED")
         recommended_actions = _recommended_actions(known_issue_codes)
@@ -400,6 +428,12 @@ class DoctorReport:
             alignment_ready=alignment_ready,
             alignment_issue_code=alignment_issue_code,
             alignment_romanizer_configured=alignment_romanizer_configured,
+            alignment_text_map_configured=alignment_text_map_configured,
+            alignment_ja_reading_map_configured=alignment_ja_reading_map_configured,
+            alignment_map_issue_code=alignment_map_issue_code,
+            pyannote_num_speakers=pyannote_num_speakers,
+            pyannote_min_speakers=pyannote_min_speakers,
+            pyannote_max_speakers=pyannote_max_speakers,
             cache_dir=str(cache_dir),
             cache_dir_writable=cache_dir_writable,
             detected_device=effective_device("auto"),
@@ -431,7 +465,13 @@ class DoctorReport:
             "alignment_ready": self.alignment_ready,
             "alignment_issue_code": self.alignment_issue_code,
             "alignment_romanizer_configured": self.alignment_romanizer_configured,
+            "alignment_text_map_configured": self.alignment_text_map_configured,
+            "alignment_ja_reading_map_configured": self.alignment_ja_reading_map_configured,
+            "alignment_map_issue_code": self.alignment_map_issue_code,
             "alignment_language_strategy": "latin-script languages via torchaudio MMS_FA",
+            "pyannote_num_speakers": self.pyannote_num_speakers,
+            "pyannote_min_speakers": self.pyannote_min_speakers,
+            "pyannote_max_speakers": self.pyannote_max_speakers,
             "cache_dir": self.cache_dir,
             "cache_dir_writable": self.cache_dir_writable,
             "detected_device": self.detected_device,
@@ -458,7 +498,10 @@ class DoctorReport:
             f"diarization decode stack: {self.diarization_decode_backend if self.diarization_decode_ready else 'incomplete'}",
             f"alignment backend: {'ready' if self.alignment_ready else self.alignment_issue_code or 'missing'}",
             f"alignment romanizer: {'configured' if self.alignment_romanizer_configured else 'not configured'}",
+            f"alignment text map: {'configured' if self.alignment_text_map_configured else self.alignment_map_issue_code or 'not configured'}",
+            f"alignment ja map: {'configured' if self.alignment_ja_reading_map_configured else self.alignment_map_issue_code or 'not configured'}",
             "alignment strategy: latin-script languages via torchaudio MMS_FA",
+            f"pyannote speaker hints: num={self.pyannote_num_speakers} min={self.pyannote_min_speakers} max={self.pyannote_max_speakers}",
             f"cache dir: {self.cache_dir} ({'writable' if self.cache_dir_writable else 'not writable'})",
             f"auto device: {self.detected_device}",
             f"known issues: {', '.join(self.known_issue_codes) if self.known_issue_codes else 'none'}",
@@ -482,6 +525,16 @@ def _module_importable(module_name: str, timeout_seconds: float = 2.0) -> bool:
         return True
     except Exception:
         return False
+
+
+def _int_env(name: str) -> int | None:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def _recommended_actions(issue_codes: list[str]) -> list[str]:
