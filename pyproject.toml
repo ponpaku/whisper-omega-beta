@@ -12,8 +12,10 @@ dependencies = ["click>=8.0"]
 
 [project.optional-dependencies]
 core = ["faster-whisper>=1.2.1"]
+align = ["torchaudio>=2.8.0"]
 diarize = ["pyannote.audio>=4.0.4"]
-full = ["faster-whisper>=1.2.1", "pyannote.audio>=4.0.4"]
+validation = ["datasets>=2.20.0"]
+full = ["faster-whisper>=1.2.1", "torchaudio>=2.8.0", "pyannote.audio>=4.0.4"]
 
 [project.scripts]
 omega = "whisper_omega.cli.main:main"

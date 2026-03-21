@@ -9,7 +9,7 @@ import importlib.util
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from whisper_omega.align.base import AlignmentBackend, NoopAlignmentBackend, UnavailableWav2Vec2Backend
+from whisper_omega.align.base import AlignmentBackend, NoopAlignmentBackend, Wav2Vec2AlignmentBackend
 from whisper_omega.asr.base import ASRBackend
 from whisper_omega.asr.faster_whisper_backend import FasterWhisperBackend, dependency_error
 from whisper_omega.diarize.base import DiarizationBackend, NoopDiarizationBackend, UnavailablePyannoteBackend
@@ -126,9 +126,9 @@ class TranscriptionService:
             speakers=[],
             metadata=metadata,
         )
-        return self._apply_optional_features(result)
+        return self._apply_optional_features(audio_path, result)
 
-    def _apply_optional_features(self, result: TranscriptionResult) -> TranscriptionResult:
+    def _apply_optional_features(self, audio_path: Path, result: TranscriptionResult) -> TranscriptionResult:
         failed: list[str] = []
         backend_errors: list[BackendError] = []
         fallbacks: list[Fallback] = []
@@ -137,8 +137,9 @@ class TranscriptionService:
         speakers = result.speakers
 
         if "alignment" in self.config.required_features:
-            outcome = self.alignment_backend.align(words, result.language)
-            words = outcome.words
+            outcome = self.alignment_backend.align(audio_path, result.text, segments, words, result.language)
+            if outcome.words:
+                words = outcome.words
             if outcome.backend_errors:
                 failed.append("alignment")
                 backend_errors.extend(outcome.backend_errors)
@@ -238,7 +239,7 @@ class TranscriptionService:
     @staticmethod
     def _make_alignment_backend(name: str) -> AlignmentBackend:
         if name == "wav2vec2":
-            return UnavailableWav2Vec2Backend()
+            return Wav2Vec2AlignmentBackend()
         return NoopAlignmentBackend()
 
     @staticmethod
@@ -300,23 +301,49 @@ class DoctorReport:
     faster_whisper_available: bool
     ctranslate2_available: bool
     torch_available: bool
+    torchcodec_available: bool
+    torchcodec_importable: bool
     torch_cuda_available: bool
     nvidia_smi_available: bool
+    ffmpeg_available: bool
     nvidia_summary: str
     hf_token_configured: bool
     diarization_backend_available: bool
     alignment_backend_available: bool
+    diarization_ready: bool
+    diarization_issue_code: str | None
+    diarization_decode_ready: bool
+    alignment_ready: bool
+    alignment_issue_code: str | None
+    alignment_romanizer_configured: bool
     cache_dir: str
     cache_dir_writable: bool
     detected_device: str
+    known_issue_codes: list[str]
+    recommended_actions: list[str]
 
     @classmethod
     def collect(cls) -> "DoctorReport":
         faster_available = _module_available("faster_whisper")
         ctranslate2_available = _module_available("ctranslate2")
         torch_available = _module_available("torch")
+        torchcodec_available = _module_available("torchcodec")
+        diarization_backend = UnavailablePyannoteBackend()
+        alignment_backend = Wav2Vec2AlignmentBackend()
         diarization_backend_available = _module_available("pyannote.audio")
-        alignment_backend_available = _module_available("transformers")
+        alignment_backend_available = _module_available("torchaudio")
+        ffmpeg_available = shutil.which("ffmpeg") is not None
+        torchcodec_importable = torchcodec_available and ffmpeg_available and _module_importable("torchcodec")
+        diarization_ready, diarization_issue_code = diarization_backend.capability()
+        diarization_decode_ready = ffmpeg_available and torchcodec_importable
+        if diarization_ready and not ffmpeg_available:
+            diarization_ready = False
+            diarization_issue_code = "AUDIO_DECODE_FAILURE"
+        elif diarization_ready and not torchcodec_importable:
+            diarization_ready = False
+            diarization_issue_code = "DIARIZATION_DECODE_UNAVAILABLE"
+        alignment_ready, alignment_issue_code = alignment_backend.capability()
+        alignment_romanizer_configured = bool(os.environ.get("OMEGA_ALIGNMENT_ROMANIZER"))
         torch_cuda = cuda_available() if torch_available else False
         has_nvidia_smi = shutil.which("nvidia-smi") is not None
         nvidia_summary = "not available"
@@ -333,21 +360,42 @@ class DoctorReport:
                 nvidia_summary = "available but unreadable"
         cache_dir = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
         cache_dir_writable = os.access(cache_dir, os.W_OK) if cache_dir.exists() else os.access(cache_dir.parent, os.W_OK)
+        known_issue_codes = []
+        if not faster_available:
+            known_issue_codes.append("DEPENDENCY_MISSING")
+        if diarization_issue_code:
+            known_issue_codes.append(diarization_issue_code)
+        if alignment_issue_code:
+            known_issue_codes.append(alignment_issue_code)
+        if not cache_dir_writable:
+            known_issue_codes.append("OUTPUT_PERMISSION_DENIED")
+        recommended_actions = _recommended_actions(known_issue_codes)
         return cls(
             python_version=sys.version.split()[0],
             platform_name=platform.platform(),
             faster_whisper_available=faster_available,
             ctranslate2_available=ctranslate2_available,
             torch_available=torch_available,
+            torchcodec_available=torchcodec_available,
+            torchcodec_importable=torchcodec_importable,
             torch_cuda_available=torch_cuda,
             nvidia_smi_available=has_nvidia_smi,
+            ffmpeg_available=ffmpeg_available,
             nvidia_summary=nvidia_summary,
             hf_token_configured=bool(os.environ.get("HF_TOKEN")),
             diarization_backend_available=diarization_backend_available,
             alignment_backend_available=alignment_backend_available,
+            diarization_ready=diarization_ready,
+            diarization_issue_code=diarization_issue_code,
+            diarization_decode_ready=diarization_decode_ready,
+            alignment_ready=alignment_ready,
+            alignment_issue_code=alignment_issue_code,
+            alignment_romanizer_configured=alignment_romanizer_configured,
             cache_dir=str(cache_dir),
             cache_dir_writable=cache_dir_writable,
             detected_device=effective_device("auto"),
+            known_issue_codes=known_issue_codes,
+            recommended_actions=recommended_actions,
         )
 
     def to_dict(self) -> dict:
@@ -357,15 +405,27 @@ class DoctorReport:
             "faster_whisper_available": self.faster_whisper_available,
             "ctranslate2_available": self.ctranslate2_available,
             "torch_available": self.torch_available,
+            "torchcodec_available": self.torchcodec_available,
+            "torchcodec_importable": self.torchcodec_importable,
             "torch_cuda_available": self.torch_cuda_available,
             "nvidia_smi_available": self.nvidia_smi_available,
+            "ffmpeg_available": self.ffmpeg_available,
             "nvidia_summary": self.nvidia_summary,
             "hf_token_configured": self.hf_token_configured,
             "diarization_backend_available": self.diarization_backend_available,
             "alignment_backend_available": self.alignment_backend_available,
+            "diarization_ready": self.diarization_ready,
+            "diarization_issue_code": self.diarization_issue_code,
+            "diarization_decode_ready": self.diarization_decode_ready,
+            "alignment_ready": self.alignment_ready,
+            "alignment_issue_code": self.alignment_issue_code,
+            "alignment_romanizer_configured": self.alignment_romanizer_configured,
+            "alignment_language_strategy": "latin-script languages via torchaudio MMS_FA",
             "cache_dir": self.cache_dir,
             "cache_dir_writable": self.cache_dir_writable,
             "detected_device": self.detected_device,
+            "known_issue_codes": self.known_issue_codes,
+            "recommended_actions": self.recommended_actions,
         }
 
     def to_lines(self) -> list[str]:
@@ -375,16 +435,53 @@ class DoctorReport:
             f"faster-whisper: {'ok' if self.faster_whisper_available else 'missing'}",
             f"ctranslate2: {'ok' if self.ctranslate2_available else 'missing'}",
             f"torch: {'ok' if self.torch_available else 'missing'}",
+            f"torchcodec: {'ok' if self.torchcodec_available else 'missing'}",
+            f"torchcodec import: {'ok' if self.torchcodec_importable else 'unavailable'}",
             f"torch CUDA: {'ok' if self.torch_cuda_available else 'unavailable'}",
             f"nvidia-smi: {'ok' if self.nvidia_smi_available else 'missing'}",
+            f"ffmpeg: {'ok' if self.ffmpeg_available else 'missing'}",
             f"NVIDIA: {self.nvidia_summary}",
             f"HF_TOKEN: {'configured' if self.hf_token_configured else 'missing'}",
-            f"diarization backend: {'ok' if self.diarization_backend_available else 'missing'}",
-            f"alignment backend: {'ok' if self.alignment_backend_available else 'missing'}",
+            f"diarization backend: {'ready' if self.diarization_ready else self.diarization_issue_code or 'missing'}",
+            f"diarization decode stack: {'ready' if self.diarization_decode_ready else 'incomplete'}",
+            f"alignment backend: {'ready' if self.alignment_ready else self.alignment_issue_code or 'missing'}",
+            f"alignment romanizer: {'configured' if self.alignment_romanizer_configured else 'not configured'}",
+            "alignment strategy: latin-script languages via torchaudio MMS_FA",
             f"cache dir: {self.cache_dir} ({'writable' if self.cache_dir_writable else 'not writable'})",
             f"auto device: {self.detected_device}",
+            f"known issues: {', '.join(self.known_issue_codes) if self.known_issue_codes else 'none'}",
+            f"recommended actions: {' | '.join(self.recommended_actions) if self.recommended_actions else 'none'}",
         ]
 
 
 def _module_available(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
+
+
+def _module_importable(module_name: str, timeout_seconds: float = 2.0) -> bool:
+    try:
+        subprocess.run(
+            [sys.executable, "-c", f"import {module_name}"],
+            check=True,
+            capture_output=True,
+            timeout=timeout_seconds,
+            text=True,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _recommended_actions(issue_codes: list[str]) -> list[str]:
+    actions: list[str] = []
+    if "DEPENDENCY_MISSING" in issue_codes:
+        actions.append("Install the core extra with `python3 -m pip install '.[core]'`.")
+    if "HF_TOKEN_MISSING" in issue_codes:
+        actions.append("Set `HF_TOKEN` before running pyannote diarization.")
+    if "AUDIO_DECODE_FAILURE" in issue_codes or "DIARIZATION_DECODE_UNAVAILABLE" in issue_codes:
+        actions.append("Install system FFmpeg and verify `torchcodec` can import successfully.")
+    if "ALIGNMENT_BACKEND_UNAVAILABLE" in issue_codes:
+        actions.append("Install the align extra with `python3 -m pip install '.[align]'`.")
+    if "OUTPUT_PERMISSION_DENIED" in issue_codes:
+        actions.append("Choose a writable cache/output directory.")
+    return actions

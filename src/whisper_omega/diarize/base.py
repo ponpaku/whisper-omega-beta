@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import importlib.util
 import os
 from typing import Iterable
 
@@ -21,6 +22,9 @@ class DiarizationBackend:
     def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
         raise NotImplementedError
 
+    def capability(self) -> tuple[bool, str | None]:
+        return (True, None)
+
 
 class NoopDiarizationBackend(DiarizationBackend):
     name = "none"
@@ -31,6 +35,13 @@ class NoopDiarizationBackend(DiarizationBackend):
 
 class UnavailablePyannoteBackend(DiarizationBackend):
     name = "pyannote"
+
+    def capability(self) -> tuple[bool, str | None]:
+        if importlib.util.find_spec("pyannote.audio") is None:
+            return (False, "DIARIZATION_BACKEND_UNAVAILABLE")
+        if not os.environ.get("HF_TOKEN"):
+            return (False, "HF_TOKEN_MISSING")
+        return (True, None)
 
     def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
         try:
@@ -91,7 +102,8 @@ class UnavailablePyannoteBackend(DiarizationBackend):
 
                 torch_device = torch.device("cuda" if device == "cuda" else "cpu")
                 pipeline.to(torch_device)
-            diarization = pipeline(audio_path)
+            diarization_input = _load_audio_for_pyannote(audio_path)
+            diarization = pipeline(diarization_input)
         except Exception as exc:
             return DiarizationOutcome(
                 segments=segments,
@@ -128,6 +140,19 @@ class UnavailablePyannoteBackend(DiarizationBackend):
 def _iter_speaker_turns(diarization) -> Iterable[tuple[float, float, str]]:
     for turn, _, speaker in diarization.itertracks(yield_label=True):
         yield (float(turn.start), float(turn.end), str(speaker))
+
+
+def _load_audio_for_pyannote(audio_path: str):
+    try:
+        import torchaudio
+    except Exception:
+        return audio_path
+
+    try:
+        waveform, sample_rate = torchaudio.load(audio_path)
+    except Exception:
+        return audio_path
+    return {"waveform": waveform, "sample_rate": sample_rate}
 
 
 def _speaker_for_interval(start: float, end: float, speaker_turns: list[tuple[float, float, str]]) -> str | None:

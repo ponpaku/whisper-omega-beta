@@ -97,13 +97,25 @@ class ContractTests(unittest.TestCase):
         for key in (
             "ctranslate2_available",
             "torch_available",
+            "torchcodec_available",
+            "torchcodec_importable",
             "torch_cuda_available",
+            "ffmpeg_available",
             "hf_token_configured",
             "diarization_backend_available",
             "alignment_backend_available",
+            "diarization_ready",
+            "diarization_issue_code",
+            "diarization_decode_ready",
+            "alignment_ready",
+            "alignment_issue_code",
+            "alignment_romanizer_configured",
+            "alignment_language_strategy",
             "cache_dir",
             "cache_dir_writable",
             "detected_device",
+            "known_issue_codes",
+            "recommended_actions",
         ):
             self.assertIn(key, report)
 
