@@ -279,10 +279,11 @@ def setup_diarize() -> None:
         "Diarization setup path:",
         "1. python3 -m pip install -e .",
         "2. python3 -m pip install '.[diarize]'",
-        "3. Ensure ffmpeg and torchcodec are available for audio decode",
+        "3. Ensure torchaudio or ffmpeg+torchcodec is available for audio decode",
         "4. export HF_TOKEN=...",
-        "5. omega doctor",
-        "6. omega transcribe sample.wav --require-diarization --diarize-backend pyannote --emit-result-json always",
+        "5. Optional: export OMEGA_PYANNOTE_NUM_SPEAKERS=2 or MIN/MAX speaker hints",
+        "6. omega doctor",
+        "7. omega transcribe sample.wav --require-diarization --diarize-backend pyannote --emit-result-json always",
     ]
     click.echo("\n".join(lines))
 

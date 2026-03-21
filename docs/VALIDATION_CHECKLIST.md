@@ -22,6 +22,7 @@
 - `PYTHONPATH=src python3 -m whisper_omega transcribe <tmp.wav> --device cpu --require-alignment --align-backend wav2vec2 --emit-result-json always`
 - `.venv-system/bin/omega transcribe tmp_smoke.wav --device cpu --model tiny --output-format json --emit-result-json always`
 - `MPLCONFIGDIR=/tmp/mpl .venv-system/bin/omega transcribe tmp_smoke.wav --device cpu --model tiny --require-diarization --diarize-backend pyannote --output-format json --emit-result-json always`
+- `OMEGA_PYANNOTE_MIN_SPEAKERS=2 OMEGA_PYANNOTE_MAX_SPEAKERS=3 MPLCONFIGDIR=/tmp/mpl .venv-system/bin/omega transcribe tmp_smoke.wav --device cpu --model tiny --require-diarization --diarize-backend pyannote --output-format json --emit-result-json always`
 
 ## 現在の期待結果
 
@@ -43,6 +44,7 @@
 - `OMEGA_ALIGNMENT_ROMANIZER` 設定時は非 latin transcript を romanize して alignment に流せる
 - `pyannote` 導入済みで `HF_TOKEN` 未設定時は `HF_TOKEN_MISSING` の degraded JSON を返す
 - diarization では decode stack として `torchaudio` または `ffmpeg`+`torchcodec` の readiness が確認でき、`torchaudio` 利用時は in-memory waveform 経路も使える
+- diarization では `OMEGA_PYANNOTE_NUM_SPEAKERS` / `MIN_SPEAKERS` / `MAX_SPEAKERS` を speaker hint として backend へ渡せる
 - D1/D2 の実データ fixture は `fixtures/d1_short_ja` / `fixtures/d2_short_en` にローカル export 済み
 - D3 のローカル fixture は `fixtures/d3_long_mixed` に生成できる
 - D4/D5 のローカル fixture は `fixtures/d4_diarization` / `fixtures/d5_failure_injection` に生成できる

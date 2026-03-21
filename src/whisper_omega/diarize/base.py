@@ -96,6 +96,23 @@ class UnavailablePyannoteBackend(DiarizationBackend):
         model_id = os.environ.get("OMEGA_PYANNOTE_MODEL", "pyannote/speaker-diarization-3.1")
         device = os.environ.get("OMEGA_DEVICE", "cpu")
         try:
+            pipeline_kwargs = _pyannote_runtime_kwargs()
+        except ValueError as exc:
+            return DiarizationOutcome(
+                segments=segments,
+                words=words,
+                speakers=[],
+                backend_errors=[
+                    BackendError(
+                        backend=self.name,
+                        code="CONFIG_INVALID",
+                        category="configuration",
+                        message=str(exc),
+                        retryable=False,
+                    )
+                ],
+            )
+        try:
             pipeline = Pipeline.from_pretrained(model_id, token=os.environ["HF_TOKEN"])
             if hasattr(pipeline, "to"):
                 import torch
@@ -103,7 +120,7 @@ class UnavailablePyannoteBackend(DiarizationBackend):
                 torch_device = torch.device("cuda" if device == "cuda" else "cpu")
                 pipeline.to(torch_device)
             diarization_input = _load_audio_for_pyannote(audio_path)
-            diarization = pipeline(diarization_input)
+            diarization = pipeline(diarization_input, **pipeline_kwargs)
         except Exception as exc:
             return DiarizationOutcome(
                 segments=segments,
@@ -153,6 +170,36 @@ def _load_audio_for_pyannote(audio_path: str):
     except Exception:
         return audio_path
     return {"waveform": waveform, "sample_rate": sample_rate}
+
+
+def _pyannote_runtime_kwargs() -> dict[str, int]:
+    mapping = {
+        "OMEGA_PYANNOTE_NUM_SPEAKERS": "num_speakers",
+        "OMEGA_PYANNOTE_MIN_SPEAKERS": "min_speakers",
+        "OMEGA_PYANNOTE_MAX_SPEAKERS": "max_speakers",
+    }
+    kwargs: dict[str, int] = {}
+    for env_name, key in mapping.items():
+        value = os.environ.get(env_name)
+        if value is None or value == "":
+            continue
+        try:
+            parsed = int(value)
+        except ValueError as exc:
+            raise ValueError(f"{env_name} must be an integer") from exc
+        if parsed <= 0:
+            raise ValueError(f"{env_name} must be greater than 0")
+        kwargs[key] = parsed
+    min_speakers = kwargs.get("min_speakers")
+    max_speakers = kwargs.get("max_speakers")
+    num_speakers = kwargs.get("num_speakers")
+    if min_speakers and max_speakers and min_speakers > max_speakers:
+        raise ValueError("OMEGA_PYANNOTE_MIN_SPEAKERS cannot be greater than OMEGA_PYANNOTE_MAX_SPEAKERS")
+    if num_speakers and min_speakers and num_speakers < min_speakers:
+        raise ValueError("OMEGA_PYANNOTE_NUM_SPEAKERS cannot be smaller than OMEGA_PYANNOTE_MIN_SPEAKERS")
+    if num_speakers and max_speakers and num_speakers > max_speakers:
+        raise ValueError("OMEGA_PYANNOTE_NUM_SPEAKERS cannot be greater than OMEGA_PYANNOTE_MAX_SPEAKERS")
+    return kwargs
 
 
 def _speaker_for_interval(start: float, end: float, speaker_turns: list[tuple[float, float, str]]) -> str | None:
