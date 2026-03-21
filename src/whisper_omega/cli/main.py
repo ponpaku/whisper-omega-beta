@@ -267,7 +267,8 @@ def setup_align() -> None:
         "3. omega doctor",
         "4. omega transcribe sample.wav --require-alignment --align-backend wav2vec2 --emit-result-json always",
         "5. Use a latin-script language, leave --language unset for auto-latin mode, or use kana-only Japanese",
-        "6. For other non-latin languages, set OMEGA_ALIGNMENT_ROMANIZER to an external romanizer command",
+        "6. For Japanese with kanji, optionally set OMEGA_ALIGNMENT_JA_READING_MAP to a JSON word->reading map",
+        "7. For other non-latin languages, set OMEGA_ALIGNMENT_ROMANIZER to an external romanizer command",
     ]
     click.echo("\n".join(lines))
 

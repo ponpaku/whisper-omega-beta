@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import json
+import tempfile
 import types
 import unittest
 from unittest.mock import patch
@@ -157,6 +159,36 @@ class AlignTests(unittest.TestCase):
 
         self.assertFalse(outcome.backend_errors)
         self.assertEqual(outcome.words[0].text, "こんにちは")
+
+    def test_wav2vec2_backend_can_use_japanese_reading_map_for_kanji(self) -> None:
+        fake_torchaudio = types.SimpleNamespace(
+            pipelines=types.SimpleNamespace(MMS_FA=FakeBundle()),
+            functional=types.SimpleNamespace(resample=lambda waveform, sample_rate, target_rate: waveform),
+            load=lambda path: (torch.ones((1, 16000)), 16000),
+        )
+        fake_torch = types.SimpleNamespace(inference_mode=contextlib.nullcontext)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mapping_path = f"{tmpdir}/ja_reading_map.json"
+            with open(mapping_path, "w", encoding="utf-8") as handle:
+                json.dump({"日本語": "にほんご"}, handle, ensure_ascii=False)
+
+            backend = Wav2Vec2AlignmentBackend()
+            with patch.dict(
+                "os.environ",
+                {"OMEGA_ALIGNMENT_JA_READING_MAP": mapping_path},
+                clear=False,
+            ), patch.dict("sys.modules", {"torchaudio": fake_torchaudio, "torch": fake_torch}):
+                outcome = backend.align(
+                    audio_path=__file__,
+                    text="日本語",
+                    segments=[Segment(id=0, start=0.0, end=1.0, text="日本語", speaker=None)],
+                    words=[Word(text="日本語", start=0.0, end=0.5, speaker=None)],
+                    language="ja",
+                )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.words[0].text, "日本語")
 
 
 if __name__ == "__main__":

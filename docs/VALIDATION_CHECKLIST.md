@@ -41,6 +41,7 @@
 - `transcribe` は `faster-whisper` 未導入環境では `DEPENDENCY_MISSING` の JSON failure を返す
 - `faster-whisper` 導入後は CPU 上で end-to-end smoke test が成功する
 - `align` extra 導入後は latin-script 音声と kana-only Japanese に対して `wav2vec2` alignment が成功する
+- `OMEGA_ALIGNMENT_JA_READING_MAP` 設定時は kanji を含む日本語 transcript を読み仮名経由で alignment に流せる
 - `OMEGA_ALIGNMENT_ROMANIZER` 設定時はその他の非 latin transcript を romanize して alignment に流せる
 - `pyannote` 導入済みで `HF_TOKEN` 未設定時は `HF_TOKEN_MISSING` の degraded JSON を返す
 - diarization では decode stack として `torchaudio` または `ffmpeg`+`torchcodec` の readiness が確認でき、`torchaudio` 利用時は in-memory waveform 経路も使える

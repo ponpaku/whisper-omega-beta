@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 import os
 from pathlib import Path
 import re
@@ -277,7 +278,7 @@ def resolve_alignment_language(language: str | None) -> str | None:
 
 def _prepare_word_for_alignment(text: str, resolved_language: str) -> str:
     if resolved_language == "ja-kana":
-        return _romanize_kana(text)
+        return _romanize_japanese_word(text)
     if resolved_language.startswith("romanized:"):
         return _romanize_word(text)
     return _normalize_word(text)
@@ -355,6 +356,29 @@ def _romanize_kana(text: str) -> str:
         result.append(mapped)
         index += 1
     return _normalize_word("".join(result))
+
+
+def _romanize_japanese_word(text: str) -> str:
+    mapped = _japanese_reading_override(text)
+    if mapped:
+        return _romanize_kana(mapped)
+    return _romanize_kana(text)
+
+
+def _japanese_reading_override(text: str) -> str | None:
+    mapping_path = os.environ.get("OMEGA_ALIGNMENT_JA_READING_MAP")
+    if not mapping_path:
+        return None
+    try:
+        payload = json.loads(Path(mapping_path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    reading = payload.get(text)
+    if isinstance(reading, str):
+        return reading
+    return None
 
 
 def _apply_spans(
