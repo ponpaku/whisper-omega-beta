@@ -97,6 +97,7 @@ class ContractTests(unittest.TestCase):
         for key in (
             "ctranslate2_available",
             "torch_available",
+            "torchaudio_available",
             "torchcodec_available",
             "torchcodec_importable",
             "torch_cuda_available",
@@ -107,6 +108,7 @@ class ContractTests(unittest.TestCase):
             "diarization_ready",
             "diarization_issue_code",
             "diarization_decode_ready",
+            "diarization_decode_backend",
             "alignment_ready",
             "alignment_issue_code",
             "alignment_romanizer_configured",
@@ -118,6 +120,26 @@ class ContractTests(unittest.TestCase):
             "recommended_actions",
         ):
             self.assertIn(key, report)
+
+    def test_doctor_prefers_torchaudio_for_diarization_decode(self) -> None:
+        availability = {
+            "faster_whisper": True,
+            "ctranslate2": True,
+            "torch": True,
+            "torchaudio": True,
+            "torchcodec": False,
+            "pyannote.audio": True,
+        }
+
+        with patch("whisper_omega.runtime.service._module_available", side_effect=lambda name: availability.get(name, False)):
+            with patch("whisper_omega.runtime.service._module_importable", return_value=False):
+                with patch("whisper_omega.runtime.service.UnavailablePyannoteBackend.capability", return_value=(True, None)):
+                    with patch("whisper_omega.runtime.service.Wav2Vec2AlignmentBackend.capability", return_value=(True, None)):
+                        with patch("whisper_omega.runtime.service.shutil.which", return_value=None):
+                            report = DoctorReport.collect().to_dict()
+
+        self.assertTrue(report["diarization_decode_ready"])
+        self.assertEqual(report["diarization_decode_backend"], "torchaudio")
 
 
 if __name__ == "__main__":

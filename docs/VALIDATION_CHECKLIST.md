@@ -26,7 +26,7 @@
 ## 現在の期待結果
 
 - テストは green
-- `doctor` は Python / platform / `faster-whisper` / `ctranslate2` / `torch` / `torchcodec` / `nvidia-smi` / alignment・diarization readiness / recommended actions を返す
+- `doctor` は Python / platform / `faster-whisper` / `ctranslate2` / `torch` / `torchaudio` / `torchcodec` / `nvidia-smi` / alignment・diarization readiness / decode backend / recommended actions を返す
 - `build_dataset_manifest.py` は dataset file / SHA256 / duration の markdown 行を生成できる
 - `export_google_fleurs_fixtures.py` は `google/fleurs` から D1/D2 候補 fixture をローカル wav に書き出せる
 - `build_long_fixture.py` は既存 fixture から D3_LONG_MIXED 向け long-form wav と recipe JSON を作れる
@@ -42,7 +42,7 @@
 - `align` extra 導入後は latin-script 音声に対して `wav2vec2` alignment が成功する
 - `OMEGA_ALIGNMENT_ROMANIZER` 設定時は非 latin transcript を romanize して alignment に流せる
 - `pyannote` 導入済みで `HF_TOKEN` 未設定時は `HF_TOKEN_MISSING` の degraded JSON を返す
-- diarization では decode stack として `ffmpeg` / `torchcodec` の readiness が確認でき、`torchaudio` 利用時は in-memory waveform 経路も使える
+- diarization では decode stack として `torchaudio` または `ffmpeg`+`torchcodec` の readiness が確認でき、`torchaudio` 利用時は in-memory waveform 経路も使える
 - D1/D2 の実データ fixture は `fixtures/d1_short_ja` / `fixtures/d2_short_en` にローカル export 済み
 - D3 のローカル fixture は `fixtures/d3_long_mixed` に生成できる
 - D4/D5 のローカル fixture は `fixtures/d4_diarization` / `fixtures/d5_failure_injection` に生成できる

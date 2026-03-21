@@ -301,6 +301,7 @@ class DoctorReport:
     faster_whisper_available: bool
     ctranslate2_available: bool
     torch_available: bool
+    torchaudio_available: bool
     torchcodec_available: bool
     torchcodec_importable: bool
     torch_cuda_available: bool
@@ -313,6 +314,7 @@ class DoctorReport:
     diarization_ready: bool
     diarization_issue_code: str | None
     diarization_decode_ready: bool
+    diarization_decode_backend: str
     alignment_ready: bool
     alignment_issue_code: str | None
     alignment_romanizer_configured: bool
@@ -327,19 +329,24 @@ class DoctorReport:
         faster_available = _module_available("faster_whisper")
         ctranslate2_available = _module_available("ctranslate2")
         torch_available = _module_available("torch")
+        torchaudio_available = _module_available("torchaudio")
         torchcodec_available = _module_available("torchcodec")
         diarization_backend = UnavailablePyannoteBackend()
         alignment_backend = Wav2Vec2AlignmentBackend()
         diarization_backend_available = _module_available("pyannote.audio")
-        alignment_backend_available = _module_available("torchaudio")
+        alignment_backend_available = torchaudio_available
         ffmpeg_available = shutil.which("ffmpeg") is not None
         torchcodec_importable = torchcodec_available and ffmpeg_available and _module_importable("torchcodec")
         diarization_ready, diarization_issue_code = diarization_backend.capability()
-        diarization_decode_ready = ffmpeg_available and torchcodec_importable
-        if diarization_ready and not ffmpeg_available:
-            diarization_ready = False
-            diarization_issue_code = "AUDIO_DECODE_FAILURE"
-        elif diarization_ready and not torchcodec_importable:
+        diarization_decode_ready = False
+        diarization_decode_backend = "none"
+        if torchaudio_available:
+            diarization_decode_ready = True
+            diarization_decode_backend = "torchaudio"
+        elif ffmpeg_available and torchcodec_importable:
+            diarization_decode_ready = True
+            diarization_decode_backend = "ffmpeg+torchcodec"
+        if diarization_ready and not diarization_decode_ready:
             diarization_ready = False
             diarization_issue_code = "DIARIZATION_DECODE_UNAVAILABLE"
         alignment_ready, alignment_issue_code = alignment_backend.capability()
@@ -376,6 +383,7 @@ class DoctorReport:
             faster_whisper_available=faster_available,
             ctranslate2_available=ctranslate2_available,
             torch_available=torch_available,
+            torchaudio_available=torchaudio_available,
             torchcodec_available=torchcodec_available,
             torchcodec_importable=torchcodec_importable,
             torch_cuda_available=torch_cuda,
@@ -388,6 +396,7 @@ class DoctorReport:
             diarization_ready=diarization_ready,
             diarization_issue_code=diarization_issue_code,
             diarization_decode_ready=diarization_decode_ready,
+            diarization_decode_backend=diarization_decode_backend,
             alignment_ready=alignment_ready,
             alignment_issue_code=alignment_issue_code,
             alignment_romanizer_configured=alignment_romanizer_configured,
@@ -405,6 +414,7 @@ class DoctorReport:
             "faster_whisper_available": self.faster_whisper_available,
             "ctranslate2_available": self.ctranslate2_available,
             "torch_available": self.torch_available,
+            "torchaudio_available": self.torchaudio_available,
             "torchcodec_available": self.torchcodec_available,
             "torchcodec_importable": self.torchcodec_importable,
             "torch_cuda_available": self.torch_cuda_available,
@@ -417,6 +427,7 @@ class DoctorReport:
             "diarization_ready": self.diarization_ready,
             "diarization_issue_code": self.diarization_issue_code,
             "diarization_decode_ready": self.diarization_decode_ready,
+            "diarization_decode_backend": self.diarization_decode_backend,
             "alignment_ready": self.alignment_ready,
             "alignment_issue_code": self.alignment_issue_code,
             "alignment_romanizer_configured": self.alignment_romanizer_configured,
@@ -435,6 +446,7 @@ class DoctorReport:
             f"faster-whisper: {'ok' if self.faster_whisper_available else 'missing'}",
             f"ctranslate2: {'ok' if self.ctranslate2_available else 'missing'}",
             f"torch: {'ok' if self.torch_available else 'missing'}",
+            f"torchaudio: {'ok' if self.torchaudio_available else 'missing'}",
             f"torchcodec: {'ok' if self.torchcodec_available else 'missing'}",
             f"torchcodec import: {'ok' if self.torchcodec_importable else 'unavailable'}",
             f"torch CUDA: {'ok' if self.torch_cuda_available else 'unavailable'}",
@@ -443,7 +455,7 @@ class DoctorReport:
             f"NVIDIA: {self.nvidia_summary}",
             f"HF_TOKEN: {'configured' if self.hf_token_configured else 'missing'}",
             f"diarization backend: {'ready' if self.diarization_ready else self.diarization_issue_code or 'missing'}",
-            f"diarization decode stack: {'ready' if self.diarization_decode_ready else 'incomplete'}",
+            f"diarization decode stack: {self.diarization_decode_backend if self.diarization_decode_ready else 'incomplete'}",
             f"alignment backend: {'ready' if self.alignment_ready else self.alignment_issue_code or 'missing'}",
             f"alignment romanizer: {'configured' if self.alignment_romanizer_configured else 'not configured'}",
             "alignment strategy: latin-script languages via torchaudio MMS_FA",
