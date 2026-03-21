@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from whisper_omega.align.base import UnavailableWav2Vec2Backend
+from whisper_omega.align.base import AlignmentOutcome, UnavailableWav2Vec2Backend
 from whisper_omega.asr.base import ASRBackend, BackendTranscription
 from whisper_omega.diarize.base import DiarizationBackend, DiarizationOutcome
 from whisper_omega.runtime.models import BackendError, Segment, Word
@@ -73,6 +73,8 @@ class ServiceTests(unittest.TestCase):
         result = service.transcribe(__file__)
         self.assertEqual(result.status, "success")
         self.assertIn("alignment", result.metadata.completed_features)
+        self.assertEqual(result.metadata.alignment_strategy, "fallback-existing-words")
+        self.assertEqual(result.metadata.alignment_token_source, "asr_words")
 
     def test_strict_gpu_with_auto_fails_when_cuda_unavailable(self) -> None:
         service = TranscriptionService(
@@ -86,6 +88,40 @@ class ServiceTests(unittest.TestCase):
 
         self.assertEqual(result.status, "failure")
         self.assertEqual(result.error_code, "GPU_UNAVAILABLE")
+
+    def test_permissive_alignment_failure_records_alignment_metadata(self) -> None:
+        class FailingAlignmentBackend(UnavailableWav2Vec2Backend):
+            def align(self, audio_path, text, segments, words, language):
+                _ = (audio_path, text, segments, words, language)
+                return AlignmentOutcome(
+                    words=[],
+                    strategy="romanized:ru",
+                    token_source="text_map",
+                    backend_errors=[
+                        BackendError(
+                            backend=self.name,
+                            code="ALIGNMENT_MODEL_UNAVAILABLE",
+                            category="backend",
+                            message="alignment backend could not produce word timings",
+                            retryable=False,
+                        )
+                    ],
+                )
+
+        service = TranscriptionService(
+            ServiceConfig(
+                policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                required_features=["alignment"],
+                align_backend="wav2vec2",
+            ),
+            asr_backend=StubBackend(),
+            alignment_backend=FailingAlignmentBackend(),
+        )
+        result = service.transcribe(__file__)
+
+        self.assertEqual(result.status, "degraded")
+        self.assertEqual(result.metadata.alignment_strategy, "romanized:ru")
+        self.assertEqual(result.metadata.alignment_token_source, "text_map")
 
 
 if __name__ == "__main__":

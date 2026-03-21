@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "status": "failure",
+  "text": "",
+  "language": "",
+  "segments": [],
+  "words": [],
+  "speakers": [],
+  "metadata": {
+    "asr_backend": "faster-whisper",
+    "align_backend": "wav2vec2",
+    "diarization_backend": "none",
+    "device": "cpu",
+    "requested_device": "cuda",
+    "actual_device": "cpu",
+    "alignment_strategy": null,
+    "alignment_token_source": null,
+    "fallbacks": [],
+    "requested_features": [
+      "asr",
+      "alignment"
+    ],
+    "completed_features": [],
+    "failed_features": [
+      "asr"
+    ]
+  },
+  "error_code": "GPU_UNAVAILABLE",
+  "error_category": "runtime",
+  "backend_errors": [
+    {
+      "backend": "faster-whisper",
+      "code": "GPU_UNAVAILABLE",
+      "category": "runtime",
+      "message": "CUDA device not available",
+      "retryable": true
+    }
+  ]
+}

@@ -110,6 +110,8 @@ class Metadata:
     device: str
     requested_device: str
     actual_device: str
+    alignment_strategy: str | None = None
+    alignment_token_source: str | None = None
     fallbacks: list[Fallback] = field(default_factory=list)
     requested_features: list[str] = field(default_factory=list)
     completed_features: list[str] = field(default_factory=list)
@@ -123,6 +125,8 @@ class Metadata:
             "device": self.device,
             "requested_device": self.requested_device,
             "actual_device": self.actual_device,
+            "alignment_strategy": self.alignment_strategy,
+            "alignment_token_source": self.alignment_token_source,
             "fallbacks": [item.to_dict() for item in self.fallbacks],
             "requested_features": self.requested_features,
             "completed_features": self.completed_features,

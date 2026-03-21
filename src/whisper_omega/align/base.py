@@ -85,6 +85,8 @@ _HIRAGANA_DIGRAPHS = {
 @dataclass(slots=True)
 class AlignmentOutcome:
     words: list[Word]
+    strategy: str | None = None
+    token_source: str | None = None
     backend_errors: list[BackendError] = field(default_factory=list)
 
 
@@ -117,7 +119,7 @@ class NoopAlignmentBackend(AlignmentBackend):
         language: str | None,
     ) -> AlignmentOutcome:
         _ = (audio_path, text, segments, language)
-        return AlignmentOutcome(words=words)
+        return AlignmentOutcome(words=words, strategy="none", token_source="none")
 
 
 class Wav2Vec2AlignmentBackend(AlignmentBackend):
@@ -174,15 +176,15 @@ class Wav2Vec2AlignmentBackend(AlignmentBackend):
                 waveform = torchaudio.functional.resample(waveform, sample_rate, bundle.sample_rate)
                 sample_rate = bundle.sample_rate
 
-            prepared_words = [_prepare_word_for_alignment(word.text, resolved_language) for word in normalized_words]
-            if any(not token for token in prepared_words):
+            prepared_words = [_prepare_alignment_token(word.text, resolved_language) for word in normalized_words]
+            if any(not item[0] for item in prepared_words):
                 return self._failure(
                     "ALIGNMENT_TEXT_UNSUPPORTED",
                     "validation",
                     "alignment transcript contains unsupported characters",
                 )
 
-            token_sequences = tokenizer(prepared_words)
+            token_sequences = tokenizer([item[0] for item in prepared_words])
             with torch.inference_mode():
                 emission, _ = model(waveform)
             spans = aligner(emission[0], token_sequences)
@@ -199,7 +201,9 @@ class Wav2Vec2AlignmentBackend(AlignmentBackend):
             aligned_words = _apply_spans(normalized_words, spans, waveform.shape[-1], sample_rate, emission.shape[1])
         except ValueError as exc:
             return self._failure("ALIGNMENT_RUNTIME_FAILURE", "backend", str(exc))
-        return AlignmentOutcome(words=aligned_words)
+        token_sources = {item[1] for item in prepared_words if item[1]}
+        token_source = sorted(token_sources)[0] if len(token_sources) == 1 else "mixed"
+        return AlignmentOutcome(words=aligned_words, strategy=resolved_language, token_source=token_source)
 
     def _failure(self, code: str, category: str, message: str) -> AlignmentOutcome:
         return AlignmentOutcome(
@@ -229,7 +233,7 @@ class UnavailableWav2Vec2Backend(AlignmentBackend):
     ) -> AlignmentOutcome:
         _ = (audio_path, text, segments, language)
         if words:
-            return AlignmentOutcome(words=words)
+            return AlignmentOutcome(words=words, strategy="fallback-existing-words", token_source="asr_words")
         return AlignmentOutcome(
             words=words,
             backend_errors=[
@@ -276,15 +280,15 @@ def resolve_alignment_language(language: str | None) -> str | None:
     return None
 
 
-def _prepare_word_for_alignment(text: str, resolved_language: str) -> str:
+def _prepare_alignment_token(text: str, resolved_language: str) -> tuple[str, str]:
     generic_mapped = _alignment_text_override(text)
     if generic_mapped:
-        return _normalize_word(generic_mapped)
+        return (_normalize_word(generic_mapped), "text_map")
     if resolved_language == "ja-kana":
         return _romanize_japanese_word(text)
     if resolved_language.startswith("romanized:"):
-        return _romanize_word(text)
-    return _normalize_word(text)
+        return (_romanize_word(text), "external_romanizer")
+    return (_normalize_word(text), "native")
 
 
 def _romanize_word(text: str) -> str:
@@ -361,11 +365,11 @@ def _romanize_kana(text: str) -> str:
     return _normalize_word("".join(result))
 
 
-def _romanize_japanese_word(text: str) -> str:
+def _romanize_japanese_word(text: str) -> tuple[str, str]:
     mapped = _japanese_reading_override(text)
     if mapped:
-        return _romanize_kana(mapped)
-    return _romanize_kana(text)
+        return (_romanize_kana(mapped), "ja_reading_map")
+    return (_romanize_kana(text), "ja_kana_builtin")
 
 
 def _japanese_reading_override(text: str) -> str | None:

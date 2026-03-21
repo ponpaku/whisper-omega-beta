@@ -15,6 +15,7 @@ from whisper_omega.runtime.service import DoctorReport
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "whisper-omega-plan" / "specs" / "appendix_a_schema_v01.json"
+RESULT_FIXTURE_DIR = ROOT / "tests" / "fixtures" / "result_payloads"
 
 
 class StubBackend(ASRBackend):
@@ -86,6 +87,15 @@ class ContractTests(unittest.TestCase):
         )
 
         self.validator.validate(result.to_dict())
+
+    def test_result_schema_accepts_representative_json_fixtures(self) -> None:
+        fixture_paths = sorted(RESULT_FIXTURE_DIR.glob("*.json"))
+        self.assertTrue(fixture_paths)
+
+        for path in fixture_paths:
+            with self.subTest(path=path.name):
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                self.validator.validate(payload)
 
     def test_effective_device_prefers_cuda_when_available(self) -> None:
         with patch("whisper_omega.runtime.policy.cuda_available", return_value=True):

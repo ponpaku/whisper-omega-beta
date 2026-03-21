@@ -56,6 +56,10 @@
 - `completed_features`
 - `failed_features`
 
+任意:
+- `alignment_strategy`
+- `alignment_token_source`
+
 feature 語彙:
 - `asr`
 - `vad`

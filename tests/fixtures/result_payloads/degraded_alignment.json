@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0.0",
+  "status": "degraded",
+  "text": "\u041f\u0440\u0438\u0432\u0435\u0442 \u043c\u0438\u0440",
+  "language": "ru",
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 1.2,
+      "text": "\u041f\u0440\u0438\u0432\u0435\u0442 \u043c\u0438\u0440",
+      "speaker": null
+    }
+  ],
+  "words": [
+    {
+      "text": "\u041f\u0440\u0438\u0432\u0435\u0442",
+      "start": 0.0,
+      "end": 0.6,
+      "speaker": null,
+      "confidence": 0.88
+    },
+    {
+      "text": "\u043c\u0438\u0440",
+      "start": 0.6,
+      "end": 1.2,
+      "speaker": null,
+      "confidence": 0.87
+    }
+  ],
+  "speakers": [],
+  "metadata": {
+    "asr_backend": "faster-whisper",
+    "align_backend": "wav2vec2",
+    "diarization_backend": "none",
+    "device": "cpu",
+    "requested_device": "cpu",
+    "actual_device": "cpu",
+    "alignment_strategy": "romanized:ru",
+    "alignment_token_source": "text_map",
+    "fallbacks": [
+      {
+        "type": "feature",
+        "from": "alignment",
+        "to": "segment_only",
+        "reason": "ALIGNMENT_MODEL_UNAVAILABLE"
+      }
+    ],
+    "requested_features": [
+      "asr",
+      "alignment"
+    ],
+    "completed_features": [
+      "asr"
+    ],
+    "failed_features": [
+      "alignment"
+    ]
+  },
+  "error_code": "ALIGNMENT_MODEL_UNAVAILABLE",
+  "error_category": "backend",
+  "backend_errors": [
+    {
+      "backend": "wav2vec2",
+      "code": "ALIGNMENT_MODEL_UNAVAILABLE",
+      "category": "backend",
+      "message": "alignment backend could not produce word timings",
+      "retryable": false
+    }
+  ]
+}

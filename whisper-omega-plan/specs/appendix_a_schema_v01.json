@@ -295,6 +295,18 @@
             "cuda"
           ]
         },
+        "alignment_strategy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "alignment_token_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "fallbacks": {
           "type": "array",
           "items": {

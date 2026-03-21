@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "status": "degraded",
+  "text": "hello world",
+  "language": "en",
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 1.0,
+      "text": "hello world",
+      "speaker": null
+    }
+  ],
+  "words": [
+    {
+      "text": "hello",
+      "start": 0.0,
+      "end": 0.4,
+      "speaker": null,
+      "confidence": 0.92
+    },
+    {
+      "text": "world",
+      "start": 0.4,
+      "end": 1.0,
+      "speaker": null,
+      "confidence": 0.91
+    }
+  ],
+  "speakers": [],
+  "metadata": {
+    "asr_backend": "faster-whisper",
+    "align_backend": "wav2vec2",
+    "diarization_backend": "pyannote",
+    "device": "cpu",
+    "requested_device": "auto",
+    "actual_device": "cpu",
+    "alignment_strategy": "en",
+    "alignment_token_source": "native",
+    "fallbacks": [
+      {
+        "type": "feature",
+        "from": "diarization",
+        "to": "speaker_null",
+        "reason": "HF_TOKEN_MISSING"
+      }
+    ],
+    "requested_features": [
+      "asr",
+      "alignment",
+      "diarization"
+    ],
+    "completed_features": [
+      "asr",
+      "alignment"
+    ],
+    "failed_features": [
+      "diarization"
+    ]
+  },
+  "error_code": "HF_TOKEN_MISSING",
+  "error_category": "configuration",
+  "backend_errors": [
+    {
+      "backend": "pyannote",
+      "code": "HF_TOKEN_MISSING",
+      "category": "configuration",
+      "message": "HF_TOKEN is required for pyannote diarization",
+      "retryable": false
+    }
+  ]
+}

@@ -57,6 +57,8 @@ class TranscriptionService:
             device=actual_device,
             requested_device=requested_device,
             actual_device=actual_device,
+            alignment_strategy=None,
+            alignment_token_source=None,
             requested_features=["asr", *self.config.required_features],
             completed_features=[],
             failed_features=[],
@@ -138,6 +140,8 @@ class TranscriptionService:
 
         if "alignment" in self.config.required_features:
             outcome = self.alignment_backend.align(audio_path, result.text, segments, words, result.language)
+            result.metadata.alignment_strategy = outcome.strategy
+            result.metadata.alignment_token_source = outcome.token_source
             if outcome.words:
                 words = outcome.words
             if outcome.backend_errors:
@@ -201,6 +205,8 @@ class TranscriptionService:
                     device=result.metadata.device,
                     requested_device=result.metadata.requested_device,
                     actual_device=result.metadata.actual_device,
+                    alignment_strategy=result.metadata.alignment_strategy,
+                    alignment_token_source=result.metadata.alignment_token_source,
                     fallbacks=[],
                     requested_features=result.metadata.requested_features,
                     completed_features=result.metadata.completed_features,
@@ -226,6 +232,8 @@ class TranscriptionService:
                 device=result.metadata.device,
                 requested_device=result.metadata.requested_device,
                 actual_device=result.metadata.actual_device,
+                alignment_strategy=result.metadata.alignment_strategy,
+                alignment_token_source=result.metadata.alignment_token_source,
                 fallbacks=fallbacks,
                 requested_features=result.metadata.requested_features,
                 completed_features=result.metadata.completed_features,
