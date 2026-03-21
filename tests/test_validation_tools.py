@@ -72,6 +72,25 @@ class ValidationToolTests(unittest.TestCase):
         self.assertIn("| D3_LONG_MIXED | sample.wav |", markdown)
         self.assertIn("| ja+en | 1 | fixture note; expected=AUDIO_DECODE_FAILURE; concatenated_inputs=2; gap_ms=250 |", markdown)
 
+    def test_build_markdown_uses_track_recipe_metadata(self) -> None:
+        (self.root / "sample.recipe.json").write_text(
+            json.dumps(
+                {
+                    "tracks": [
+                        {"id": "SPEAKER_A", "offset_ms": 0},
+                        {"id": "SPEAKER_B", "offset_ms": 300},
+                        {"id": "SPEAKER_C", "offset_ms": 1800},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        markdown = build_markdown(self.root, "D4_DIARIZATION")
+
+        self.assertIn("| D4_DIARIZATION | sample.wav |", markdown)
+        self.assertIn("| mixed | 3 | track_offsets_ms=0,300,1800 |", markdown)
+
 
 if __name__ == "__main__":
     unittest.main()

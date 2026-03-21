@@ -106,12 +106,11 @@
   - overlap や speaker assignment edge case の fixture を追加
 
 ### D3. D4 synthetic mixture を増やす
-- 状態: 部分完了
+- 状態: 完了
 - すでにあるもの:
   - `fixtures/d4_diarization/d4_mix_01.wav`
 - 残タスク:
-  - 2-speaker / 3-speaker / overlap 強めの 3 ケースへ拡張
-  - recipe と manifest を更新
+  - なし
 
 ## Milestone 3: WhisperX 互換を完成域へ寄せる
 

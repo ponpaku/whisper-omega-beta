@@ -125,7 +125,12 @@ def _row_metadata(root: Path, path: Path, dataset_id: str, manifest_entries: dic
 
     recipe = _recipe_metadata(path)
     if recipe:
-        if isinstance(recipe.get("speakers"), list):
+        if isinstance(recipe.get("tracks"), list):
+            speakers = str(len(recipe["tracks"]))
+            offsets = ",".join(str(item.get("offset_ms", 0)) for item in recipe["tracks"] if isinstance(item, dict))
+            if offsets:
+                notes = f"track_offsets_ms={offsets}" if not notes else f"{notes}; track_offsets_ms={offsets}"
+        elif isinstance(recipe.get("speakers"), list):
             speakers = str(len(recipe["speakers"]))
         elif isinstance(recipe.get("inputs"), list):
             input_count = len(recipe["inputs"])

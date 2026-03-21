@@ -7,7 +7,7 @@ import wave
 from pathlib import Path
 
 from scripts.build_long_fixture import concatenate_wavs
-from scripts.build_diarization_fixture import build_mixture, read_wav_mono
+from scripts.build_diarization_fixture import build_mixture, build_multispeaker_mixture, read_wav_mono
 from scripts.build_failure_fixtures import build_failure_fixtures
 
 
@@ -17,8 +17,10 @@ class FixtureBuilderTests(unittest.TestCase):
         self.root = Path(self.tmpdir.name)
         self.speaker_a = self.root / "speaker_a.wav"
         self.speaker_b = self.root / "speaker_b.wav"
+        self.speaker_c = self.root / "speaker_c.wav"
         self._write_pcm16(self.speaker_a, sample_rate=16000, frames=1600, value=0.25)
         self._write_pcm16(self.speaker_b, sample_rate=16000, frames=1600, value=-0.25)
+        self._write_pcm16(self.speaker_c, sample_rate=16000, frames=1600, value=0.5)
 
     def tearDown(self) -> None:
         self.tmpdir.cleanup()
@@ -63,6 +65,21 @@ class FixtureBuilderTests(unittest.TestCase):
         with wave.open(str(output_path), "rb") as handle:
             self.assertEqual(handle.getframerate(), 16000)
             self.assertEqual(handle.getnframes(), 1600 + 1600 + 4000)
+
+    def test_build_multispeaker_mixture_supports_three_speakers(self) -> None:
+        output_path = self.root / "mix_three.wav"
+        recipe = build_multispeaker_mixture(
+            [
+                {"id": "SPEAKER_A", "source": self.speaker_a, "offset_ms": 0, "gain": 1.0},
+                {"id": "SPEAKER_B", "source": self.speaker_b, "offset_ms": 100, "gain": 1.0},
+                {"id": "SPEAKER_C", "source": self.speaker_c, "offset_ms": 200, "gain": 1.0},
+            ],
+            output_path,
+        )
+
+        self.assertEqual(len(recipe["tracks"]), 3)
+        self.assertEqual(recipe["tracks"][2]["id"], "SPEAKER_C")
+        self.assertTrue((self.root / "mix_three.recipe.json").exists())
 
 
 if __name__ == "__main__":

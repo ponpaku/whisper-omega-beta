@@ -59,6 +59,65 @@ def write_pcm16_wav(path: Path, sample_rate: int, samples: list[float]) -> None:
         handle.writeframes(bytes(payload))
 
 
+def build_multispeaker_mixture(
+    tracks: list[dict],
+    output_path: Path,
+) -> dict:
+    if not tracks:
+        raise RuntimeError("at least one track is required")
+
+    loaded_tracks = []
+    sample_rate = None
+    for track in tracks:
+        source = Path(track["source"])
+        track_sample_rate, samples = read_wav_mono(source)
+        if sample_rate is None:
+            sample_rate = track_sample_rate
+        elif sample_rate != track_sample_rate:
+            raise RuntimeError("sample rates must match for diarization fixture mixing")
+        offset_frames = max(0, int(track_sample_rate * (int(track.get("offset_ms", 0)) / 1000.0)))
+        loaded_tracks.append(
+            {
+                "id": track.get("id", source.stem),
+                "source": source,
+                "offset_frames": offset_frames,
+                "gain": float(track.get("gain", 0.75)),
+                "samples": samples,
+            }
+        )
+
+    assert sample_rate is not None
+    total_frames = max(track["offset_frames"] + len(track["samples"]) for track in loaded_tracks)
+    mixed = [0.0] * total_frames
+
+    for track in loaded_tracks:
+        for index, sample in enumerate(track["samples"]):
+            mixed[index + track["offset_frames"]] += sample * track["gain"]
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    write_pcm16_wav(output_path, sample_rate, mixed)
+
+    recipe = {
+        "output_file": output_path.name,
+        "sample_rate": sample_rate,
+        "tracks": [
+            {
+                "id": track["id"],
+                "source": track["source"].name,
+                "offset_ms": round((track["offset_frames"] / sample_rate) * 1000.0),
+                "start": round(track["offset_frames"] / sample_rate, 3),
+                "end": round((track["offset_frames"] + len(track["samples"])) / sample_rate, 3),
+            }
+            for track in loaded_tracks
+        ],
+    }
+    (output_path.parent / f"{output_path.stem}.recipe.json").write_text(
+        json.dumps(recipe, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return recipe
+
+
 def build_mixture(
     speaker_a: Path,
     speaker_b: Path,
@@ -67,42 +126,13 @@ def build_mixture(
     gain_a: float,
     gain_b: float,
 ) -> dict:
-    sample_rate_a, samples_a = read_wav_mono(speaker_a)
-    sample_rate_b, samples_b = read_wav_mono(speaker_b)
-    if sample_rate_a != sample_rate_b:
-        raise RuntimeError("sample rates must match for diarization fixture mixing")
-
-    offset_frames = max(0, int(sample_rate_a * (offset_ms / 1000.0)))
-    total_frames = max(len(samples_a), offset_frames + len(samples_b))
-    mixed = [0.0] * total_frames
-
-    for index, sample in enumerate(samples_a):
-        mixed[index] += sample * gain_a
-    for index, sample in enumerate(samples_b):
-        mixed[index + offset_frames] += sample * gain_b
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    write_pcm16_wav(output_path, sample_rate_a, mixed)
-
-    recipe = {
-        "output_file": output_path.name,
-        "sample_rate": sample_rate_a,
-        "offset_ms": offset_ms,
-        "speakers": [
-            {"id": "SPEAKER_A", "source": speaker_a.name, "start": 0.0, "end": round(len(samples_a) / sample_rate_a, 3)},
-            {
-                "id": "SPEAKER_B",
-                "source": speaker_b.name,
-                "start": round(offset_frames / sample_rate_a, 3),
-                "end": round((offset_frames + len(samples_b)) / sample_rate_a, 3),
-            },
+    return build_multispeaker_mixture(
+        [
+            {"id": "SPEAKER_A", "source": speaker_a, "offset_ms": 0, "gain": gain_a},
+            {"id": "SPEAKER_B", "source": speaker_b, "offset_ms": offset_ms, "gain": gain_b},
         ],
-    }
-    (output_path.parent / f"{output_path.stem}.recipe.json").write_text(
-        json.dumps(recipe, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+        output_path,
     )
-    return recipe
 
 
 def main() -> int:
@@ -113,16 +143,19 @@ def main() -> int:
     parser.add_argument("--offset-ms", type=int, default=1200)
     parser.add_argument("--gain-a", type=float, default=0.75)
     parser.add_argument("--gain-b", type=float, default=0.75)
+    parser.add_argument("--speaker-c", type=Path)
+    parser.add_argument("--offset-ms-c", type=int, default=2400)
+    parser.add_argument("--gain-c", type=float, default=0.75)
     args = parser.parse_args()
 
-    recipe = build_mixture(
-        speaker_a=args.speaker_a,
-        speaker_b=args.speaker_b,
-        output_path=args.output_path,
-        offset_ms=args.offset_ms,
-        gain_a=args.gain_a,
-        gain_b=args.gain_b,
-    )
+    tracks = [
+        {"id": "SPEAKER_A", "source": args.speaker_a, "offset_ms": 0, "gain": args.gain_a},
+        {"id": "SPEAKER_B", "source": args.speaker_b, "offset_ms": args.offset_ms, "gain": args.gain_b},
+    ]
+    if args.speaker_c:
+        tracks.append({"id": "SPEAKER_C", "source": args.speaker_c, "offset_ms": args.offset_ms_c, "gain": args.gain_c})
+
+    recipe = build_multispeaker_mixture(tracks, args.output_path)
     print(json.dumps(recipe, ensure_ascii=False))
     return 0
 

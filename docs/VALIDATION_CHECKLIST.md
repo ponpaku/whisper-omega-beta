@@ -14,6 +14,8 @@
 - `python3 scripts/export_google_fleurs_fixtures.py D2_SHORT_EN fixtures/d2_short_en --count 5`
 - `python3 scripts/build_long_fixture.py fixtures/d3_long_mixed/d3_concat_01.wav fixtures/d1_short_ja/10411584430488337925.wav fixtures/d2_short_en/12952903060751652532.wav fixtures/d1_short_ja/11946010384058816161.wav fixtures/d2_short_en/15158676295442294624.wav --gap-ms 500`
 - `python3 scripts/build_diarization_fixture.py fixtures/d2_short_en/12952903060751652532.wav fixtures/d2_short_en/15158676295442294624.wav fixtures/d4_diarization/d4_mix_01.wav --offset-ms 1200`
+- `python3 scripts/build_diarization_fixture.py fixtures/d2_short_en/12952903060751652532.wav fixtures/d2_short_en/15158676295442294624.wav fixtures/d4_diarization/d4_mix_overlap_01.wav --offset-ms 300`
+- `python3 scripts/build_diarization_fixture.py fixtures/d2_short_en/12952903060751652532.wav fixtures/d2_short_en/15158676295442294624.wav fixtures/d4_diarization/d4_mix_3spk_01.wav --offset-ms 900 --speaker-c fixtures/d2_short_en/16131823300806444840.wav --offset-ms-c 1800`
 - `python3 scripts/build_failure_fixtures.py fixtures/d1_short_ja/10411584430488337925.wav fixtures/d5_failure_injection`
 - `python3 scripts/generate_validation_report.py --output validation-report.json`
 - `python3 scripts/generate_validation_report.py --include-alignment-smoke --output validation-report.json`
@@ -56,6 +58,7 @@
 - D1/D2 の実データ fixture は `fixtures/d1_short_ja` / `fixtures/d2_short_en` にローカル export 済み
 - D3 のローカル fixture は `fixtures/d3_long_mixed` に生成できる
 - D4/D5 のローカル fixture は `fixtures/d4_diarization` / `fixtures/d5_failure_injection` に生成できる
+- D4 は `d4_mix_01.wav` / `d4_mix_overlap_01.wav` / `d4_mix_3spk_01.wav` の 3 ケースを固定している
 
 ## 次に追加したい検証
 

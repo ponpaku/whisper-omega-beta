@@ -39,7 +39,9 @@ Local fixture directories:
 
 | Dataset ID | File | SHA256 | Duration | Language | Speakers | Notes |
 |---|---|---|---|---|---|---|
-| D4_DIARIZATION | d4_mix_01.wav | f0e0d96a425acf924e457b71a3b494f20b2ffe5b33a7f8f7d7b58e2333028ff7 | 12.660 | en | 2 | Mixed from `12952903060751652532.wav` and `15158676295442294624.wav` with `offset_ms=1200`; see `fixtures/d4_diarization/d4_mix_01.recipe.json` |
+| D4_DIARIZATION | d4_mix_01.wav | f0e0d96a425acf924e457b71a3b494f20b2ffe5b33a7f8f7d7b58e2333028ff7 | 12.660 | mixed | 2 | Mixed from `12952903060751652532.wav` and `15158676295442294624.wav`; track offsets `0,1200`; see `fixtures/d4_diarization/d4_mix_01.recipe.json` |
+| D4_DIARIZATION | d4_mix_overlap_01.wav | ebb12e4c11444434ff13c05bf583861ee70c7d0cd0119ef0c72d48904bc556a7 | 11.760 | mixed | 2 | Strong-overlap mix from `12952903060751652532.wav` and `15158676295442294624.wav`; track offsets `0,300`; see `fixtures/d4_diarization/d4_mix_overlap_01.recipe.json` |
+| D4_DIARIZATION | d4_mix_3spk_01.wav | d48e87aa7bfd28d070cbb19a4f2fd6db946d53505c8349564c10495a207f470e | 14.640 | mixed | 3 | Three-speaker mix from `12952903060751652532.wav`, `15158676295442294624.wav`, and `16131823300806444840.wav`; track offsets `0,900,1800`; see `fixtures/d4_diarization/d4_mix_3spk_01.recipe.json` |
 
 ## D5_FAILURE_INJECTION
 
