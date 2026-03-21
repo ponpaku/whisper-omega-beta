@@ -14,7 +14,7 @@
 - optional `faster-whisper` integration when installed
 - optional `torchaudio` forced alignment integration when installed
 - optional `pyannote.audio` diarization integration when installed and configured
-- WhisperX compatibility mapping for `--diarize`, `--align_model`, `--batch_size`, `--output_format`, and `--hf_token`
+- WhisperX compatibility mapping for `--model`, `--device`, `--language`, `--batch_size`, `--output_format`, `--diarize`, `--align_model`, `--hf_token`, and `--highlight_words`
 
 ## Quick Start
 
@@ -65,6 +65,22 @@ Alignment language/token resolution currently follows this order:
 4. `OMEGA_ALIGNMENT_JA_READING_MAP` when Japanese words need reading overrides
 5. `OMEGA_ALIGNMENT_ROMANIZER` for other non-latin languages
 6. otherwise `ALIGNMENT_LANGUAGE_UNSUPPORTED`
+
+## WhisperX Compatibility
+
+| WhisperX flag | whisper-omega status | Notes |
+|---|---|---|
+| `--model` | supported | Same meaning |
+| `--device` | partial | `auto` prefers CUDA when available; `cuda` means GPU required |
+| `--language` | supported | Same meaning |
+| `--batch_size` | partial | Accepted on `omega whisperx`, mapped to `--batch-size` internally |
+| `--output_format` | partial | Accepted on `omega whisperx`, mapped to `--output-format` internally |
+| `--diarize` | partial | Requests diarization and selects `pyannote` backend |
+| `--align_model` | partial | Requests alignment and selects `wav2vec2` backend |
+| `--hf_token` | partial | Sets `HF_TOKEN` when not already configured |
+| `--highlight_words` | partial | Accepted for compatibility, prints a warning, and currently has no effect |
+
+Full details live in `whisper-omega-plan/specs/appendix_b_compat_v01.md`.
 
 ## Notes
 

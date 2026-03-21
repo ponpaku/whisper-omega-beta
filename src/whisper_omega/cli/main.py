@@ -197,7 +197,8 @@ def whisperx(
     highlight_words: bool,
 ) -> None:
     """WhisperX compatibility frontend."""
-    _ = highlight_words
+    if highlight_words:
+        click.echo("warning: --highlight_words is accepted for compatibility but currently has no effect", err=True)
     if hf_token and not os.environ.get("HF_TOKEN"):
         os.environ["HF_TOKEN"] = hf_token
     compat = map_whisperx_options(

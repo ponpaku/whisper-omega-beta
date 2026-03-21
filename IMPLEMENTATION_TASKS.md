@@ -115,13 +115,13 @@
 ## Milestone 3: WhisperX 互換を完成域へ寄せる
 
 ### W1. 互換対象オプション一覧を固定する
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - supported / partial / unsupported を表で固定
   - Appendix B / README / CLI 実装が一致する
 
 ### W2. 非対応引数の扱いを固定する
-- 状態: 未着手
+- 状態: 進行中
 - 完了条件:
   - silent ignore を減らす
   - warning / usage error / partial compatibility の基準を決める

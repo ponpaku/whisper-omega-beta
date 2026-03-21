@@ -439,6 +439,36 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(os.environ.get("HF_TOKEN"), "secret-token")
 
+    def test_whisperx_highlight_words_emits_partial_compatibility_warning(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                ),
+                asr_backend=StubBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "whisperx",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--highlight_words",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("--highlight_words is accepted for compatibility", result.output)
+
     def test_setup_align_lists_alignment_steps(self) -> None:
         result = self.runner.invoke(main, ["setup", "align"])
 
