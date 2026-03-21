@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 import os
 from typing import Iterable
 
-from whisper_omega.runtime.models import BackendError, Segment, Word
+from whisper_omega.runtime.models import BackendError, Segment, Speaker, Word
 
 
 @dataclass(slots=True)
 class DiarizationOutcome:
     segments: list[Segment]
     words: list[Word]
-    speakers: list[str]
+    speakers: list[Speaker]
     backend_errors: list[BackendError] = field(default_factory=list)
 
 
@@ -114,7 +114,10 @@ class UnavailablePyannoteBackend(DiarizationBackend):
 
         assigned_segments = [_with_speaker(segment, _speaker_for_interval(segment.start, segment.end, speaker_turns)) for segment in segments]
         assigned_words = [_with_word_speaker(word, _speaker_for_interval(word.start, word.end, speaker_turns)) for word in words]
-        speakers = sorted({speaker for _, _, speaker in speaker_turns})
+        speakers = [
+            Speaker(id=speaker, start=start, end=end, label=speaker)
+            for start, end, speaker in speaker_turns
+        ]
         return DiarizationOutcome(
             segments=assigned_segments,
             words=assigned_words,

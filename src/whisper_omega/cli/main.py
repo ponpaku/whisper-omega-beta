@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -196,7 +197,9 @@ def whisperx(
     highlight_words: bool,
 ) -> None:
     """WhisperX compatibility frontend."""
-    _ = (hf_token, align_model, highlight_words)
+    _ = highlight_words
+    if hf_token and not os.environ.get("HF_TOKEN"):
+        os.environ["HF_TOKEN"] = hf_token
     compat = map_whisperx_options(
         diarize=diarize,
         align_model=align_model,
@@ -211,7 +214,7 @@ def whisperx(
             device=device,
             runtime_policy=compat.runtime_policy,
             required_features=(),
-            require_alignment=False,
+            require_alignment=compat.require_alignment,
             require_diarization=compat.require_diarization,
             output_format=compat.output_format,
             output_file=output_file,

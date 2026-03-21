@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import shutil
+import subprocess
+import warnings
 
 
 class UsageError(ValueError):
@@ -43,7 +46,38 @@ def validate_cli_constraints(
 
 
 def effective_device(device: str) -> str:
-    if device == "auto":
-        return "cpu"
-    return device
+    if device != "auto":
+        return device
+    if cuda_available():
+        return "cuda"
+    return "cpu"
 
+
+def cuda_available() -> bool:
+    try:
+        import torch
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if torch.cuda.is_available():
+                return True
+    except Exception:
+        pass
+
+    try:
+        if shutil.which("nvidia-smi") is None:
+            return False
+    except Exception:
+        return False
+
+    try:
+        completed = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    except Exception:
+        return False
+
+    return bool(completed.stdout.strip())

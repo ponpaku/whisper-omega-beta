@@ -53,6 +53,22 @@ class Word:
 
 
 @dataclass(slots=True)
+class Speaker:
+    id: str
+    start: float
+    end: float
+    label: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "start": _rounded(self.start, 3),
+            "end": _rounded(self.end, 3),
+            "label": self.label,
+        }
+
+
+@dataclass(slots=True)
 class BackendError:
     backend: str
     code: str
@@ -122,7 +138,7 @@ class TranscriptionResult:
     language: str
     segments: list[Segment]
     words: list[Word]
-    speakers: list[str]
+    speakers: list[Speaker]
     metadata: Metadata
     error_code: str | None = None
     error_category: ErrorCategory | None = None
@@ -166,10 +182,9 @@ class TranscriptionResult:
             "language": self.language,
             "segments": [item.to_dict() for item in self.segments],
             "words": [item.to_dict() for item in self.words],
-            "speakers": self.speakers,
+            "speakers": [item.to_dict() for item in self.speakers],
             "metadata": self.metadata.to_dict(),
             "error_code": self.error_code,
             "error_category": self.error_category,
             "backend_errors": [item.to_dict() for item in self.backend_errors],
         }
-

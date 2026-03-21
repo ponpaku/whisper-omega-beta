@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +11,8 @@ from click.testing import CliRunner
 
 from whisper_omega.asr.base import ASRBackend, BackendTranscription
 from whisper_omega.cli.main import main
-from whisper_omega.runtime.models import Segment, Word
+from whisper_omega.diarize.base import DiarizationBackend, DiarizationOutcome
+from whisper_omega.runtime.models import BackendError, Segment, Word
 
 
 def extract_json(output: str) -> dict:
@@ -40,14 +42,62 @@ class MissingBackend(ASRBackend):
         raise RuntimeError("DEPENDENCY_MISSING:test-backend")
 
 
+class MissingDiarizationBackend(DiarizationBackend):
+    name = "pyannote"
+
+    def diarize(self, segments, words):
+        return DiarizationOutcome(
+            segments=segments,
+            words=words,
+            speakers=[],
+            backend_errors=[
+                BackendError(
+                    backend=self.name,
+                    code="DIARIZATION_BACKEND_UNAVAILABLE",
+                    category="dependency",
+                    message="pyannote.audio is not installed",
+                    retryable=False,
+                )
+            ],
+        )
+
+
+class TokenAwareDiarizationBackend(DiarizationBackend):
+    name = "pyannote"
+
+    def diarize(self, segments, words):
+        token = os.environ.get("HF_TOKEN")
+        if not token:
+            return DiarizationOutcome(
+                segments=segments,
+                words=words,
+                speakers=[],
+                backend_errors=[
+                    BackendError(
+                        backend=self.name,
+                        code="HF_TOKEN_MISSING",
+                        category="configuration",
+                        message="HF_TOKEN is required",
+                        retryable=False,
+                    )
+                ],
+            )
+        return DiarizationOutcome(segments=segments, words=words, speakers=[])
+
+
 class CliTests(unittest.TestCase):
     def setUp(self) -> None:
         self.runner = CliRunner()
         self.tmpdir = tempfile.TemporaryDirectory()
         self.audio_path = Path(self.tmpdir.name) / "sample.wav"
         self.audio_path.write_bytes(b"RIFF")
+        self.original_hf_token = os.environ.pop("HF_TOKEN", None)
 
     def tearDown(self) -> None:
+        if self.original_hf_token is not None:
+            os.environ["HF_TOKEN"] = self.original_hf_token
+        else:
+            os.environ.pop("HF_TOKEN", None)
         self.tmpdir.cleanup()
 
     def test_transcribe_emits_json_and_exit_zero(self) -> None:
@@ -235,6 +285,7 @@ class CliTests(unittest.TestCase):
                     diarize_backend="pyannote",
                 ),
                 asr_backend=StubBackend(),
+                diarization_backend=MissingDiarizationBackend(),
             )
             service.transcribe.side_effect = real_service.transcribe
             service.write_output.side_effect = real_service.write_output
@@ -253,6 +304,76 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 10)
         self.assertIn("degraded:", result.output)
+
+    def test_whisperx_align_model_requests_alignment(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    required_features=["alignment"],
+                    align_backend="wav2vec2",
+                ),
+                asr_backend=StubBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "whisperx",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--align_model",
+                    "ja",
+                    "--output_format",
+                    "json",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("transcription completed", result.output)
+
+    def test_whisperx_hf_token_sets_environment_for_backend(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    required_features=["diarization"],
+                    diarize_backend="pyannote",
+                ),
+                asr_backend=StubBackend(),
+                diarization_backend=TokenAwareDiarizationBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "whisperx",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--diarize",
+                    "--hf_token",
+                    "secret-token",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(os.environ.get("HF_TOKEN"), "secret-token")
 
 
 if __name__ == "__main__":

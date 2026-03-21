@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from whisper_omega.runtime.models import BackendError, Metadata, Segment, TranscriptionResult, Word
+from whisper_omega.runtime.models import BackendError, Metadata, Segment, Speaker, TranscriptionResult, Word
 
 
 class ModelTests(unittest.TestCase):
@@ -43,7 +43,7 @@ class ModelTests(unittest.TestCase):
             language="",
             segments=[],
             words=[Word(text="hello", start=0.12349, end=1.99994, speaker=None, confidence=0.123456)],
-            speakers=[],
+            speakers=[Speaker(id="SPEAKER_00", start=0.12349, end=1.99994, label="Speaker 0")],
             metadata=Metadata(
                 asr_backend="stub",
                 align_backend="none",
@@ -56,9 +56,12 @@ class ModelTests(unittest.TestCase):
             error_category="dependency",
         )
         word = result.to_dict()["words"][0]
+        speaker = result.to_dict()["speakers"][0]
         self.assertEqual(word["start"], 0.123)
         self.assertEqual(word["end"], 2.0)
         self.assertEqual(word["confidence"], 0.1235)
+        self.assertEqual(speaker["start"], 0.123)
+        self.assertEqual(speaker["end"], 2.0)
 
 
 if __name__ == "__main__":

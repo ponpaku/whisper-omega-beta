@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import os
+import importlib.util
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from whisper_omega.asr.faster_whisper_backend import FasterWhisperBackend, depen
 from whisper_omega.diarize.base import DiarizationBackend, NoopDiarizationBackend, UnavailablePyannoteBackend
 from whisper_omega.io.writers import write_json, write_srt, write_txt, write_vtt
 from whisper_omega.runtime.models import BackendError, Fallback, Metadata, TranscriptionResult
-from whisper_omega.runtime.policy import PolicyConfig, effective_device
+from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device
 
 
 @dataclass(slots=True)
@@ -67,6 +68,15 @@ class TranscriptionService:
                 code="GPU_UNAVAILABLE",
                 category="runtime",
                 message="CUDA device not available",
+                backend=self.asr_backend.name,
+            )
+
+        if self.config.policy.runtime_policy == "strict-gpu" and actual_device != "cuda":
+            return self._failure_result(
+                metadata=metadata,
+                code="GPU_UNAVAILABLE",
+                category="runtime",
+                message="strict-gpu policy requires a CUDA device",
                 backend=self.asr_backend.name,
             )
 
@@ -288,17 +298,26 @@ class DoctorReport:
     python_version: str
     platform_name: str
     faster_whisper_available: bool
+    ctranslate2_available: bool
+    torch_available: bool
+    torch_cuda_available: bool
     nvidia_smi_available: bool
     nvidia_summary: str
+    hf_token_configured: bool
+    diarization_backend_available: bool
+    alignment_backend_available: bool
+    cache_dir: str
+    cache_dir_writable: bool
+    detected_device: str
 
     @classmethod
     def collect(cls) -> "DoctorReport":
-        try:
-            import faster_whisper  # noqa: F401
-
-            faster_available = True
-        except Exception:
-            faster_available = False
+        faster_available = _module_available("faster_whisper")
+        ctranslate2_available = _module_available("ctranslate2")
+        torch_available = _module_available("torch")
+        diarization_backend_available = _module_available("pyannote.audio")
+        alignment_backend_available = _module_available("transformers")
+        torch_cuda = cuda_available() if torch_available else False
         has_nvidia_smi = shutil.which("nvidia-smi") is not None
         nvidia_summary = "not available"
         if has_nvidia_smi:
@@ -312,12 +331,23 @@ class DoctorReport:
                 nvidia_summary = completed.stdout.strip() or "available"
             except Exception:
                 nvidia_summary = "available but unreadable"
+        cache_dir = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+        cache_dir_writable = os.access(cache_dir, os.W_OK) if cache_dir.exists() else os.access(cache_dir.parent, os.W_OK)
         return cls(
             python_version=sys.version.split()[0],
             platform_name=platform.platform(),
             faster_whisper_available=faster_available,
+            ctranslate2_available=ctranslate2_available,
+            torch_available=torch_available,
+            torch_cuda_available=torch_cuda,
             nvidia_smi_available=has_nvidia_smi,
             nvidia_summary=nvidia_summary,
+            hf_token_configured=bool(os.environ.get("HF_TOKEN")),
+            diarization_backend_available=diarization_backend_available,
+            alignment_backend_available=alignment_backend_available,
+            cache_dir=str(cache_dir),
+            cache_dir_writable=cache_dir_writable,
+            detected_device=effective_device("auto"),
         )
 
     def to_dict(self) -> dict:
@@ -325,8 +355,17 @@ class DoctorReport:
             "python_version": self.python_version,
             "platform": self.platform_name,
             "faster_whisper_available": self.faster_whisper_available,
+            "ctranslate2_available": self.ctranslate2_available,
+            "torch_available": self.torch_available,
+            "torch_cuda_available": self.torch_cuda_available,
             "nvidia_smi_available": self.nvidia_smi_available,
             "nvidia_summary": self.nvidia_summary,
+            "hf_token_configured": self.hf_token_configured,
+            "diarization_backend_available": self.diarization_backend_available,
+            "alignment_backend_available": self.alignment_backend_available,
+            "cache_dir": self.cache_dir,
+            "cache_dir_writable": self.cache_dir_writable,
+            "detected_device": self.detected_device,
         }
 
     def to_lines(self) -> list[str]:
@@ -334,6 +373,18 @@ class DoctorReport:
             f"Python: {self.python_version}",
             f"Platform: {self.platform_name}",
             f"faster-whisper: {'ok' if self.faster_whisper_available else 'missing'}",
+            f"ctranslate2: {'ok' if self.ctranslate2_available else 'missing'}",
+            f"torch: {'ok' if self.torch_available else 'missing'}",
+            f"torch CUDA: {'ok' if self.torch_cuda_available else 'unavailable'}",
             f"nvidia-smi: {'ok' if self.nvidia_smi_available else 'missing'}",
             f"NVIDIA: {self.nvidia_summary}",
+            f"HF_TOKEN: {'configured' if self.hf_token_configured else 'missing'}",
+            f"diarization backend: {'ok' if self.diarization_backend_available else 'missing'}",
+            f"alignment backend: {'ok' if self.alignment_backend_available else 'missing'}",
+            f"cache dir: {self.cache_dir} ({'writable' if self.cache_dir_writable else 'not writable'})",
+            f"auto device: {self.detected_device}",
         ]
+
+
+def _module_available(module_name: str) -> bool:
+    return importlib.util.find_spec(module_name) is not None

@@ -13,6 +13,7 @@
 - runtime policy: `permissive`, `strict`, `strict-gpu`
 - optional `faster-whisper` integration when installed
 - optional `pyannote.audio` diarization integration when installed and configured
+- WhisperX compatibility mapping for `--diarize`, `--align_model`, `--batch_size`, `--output_format`, and `--hf_token`
 
 ## Quick Start
 
@@ -38,6 +39,7 @@ Optional extras:
 ```
 
 For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`.
+The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `--align_model` to alignment-required execution.
 
 ## Notes
 

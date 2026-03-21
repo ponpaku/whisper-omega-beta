@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import types
 import unittest
+from unittest.mock import patch
 
 from whisper_omega.diarize.base import UnavailablePyannoteBackend
 from whisper_omega.runtime.models import Segment, Word
@@ -19,11 +21,13 @@ class DiarizeTests(unittest.TestCase):
             os.environ["OMEGA_AUDIO_PATH"] = self.original_audio_path
 
     def test_missing_token_is_configuration_error(self) -> None:
+        fake_pipeline = types.SimpleNamespace(Pipeline=object)
         backend = UnavailablePyannoteBackend()
-        outcome = backend.diarize(
-            [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
-            [Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
-        )
+        with patch.dict("sys.modules", {"pyannote.audio": fake_pipeline}):
+            outcome = backend.diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
+                [Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
+            )
         self.assertIn(
             outcome.backend_errors[0].code,
             {"DIARIZATION_BACKEND_UNAVAILABLE", "HF_TOKEN_MISSING"},

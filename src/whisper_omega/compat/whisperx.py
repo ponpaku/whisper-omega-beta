@@ -6,6 +6,7 @@ from dataclasses import dataclass
 @dataclass(slots=True)
 class WhisperXCompatRequest:
     runtime_policy: str
+    require_alignment: bool
     require_diarization: bool
     diarize_backend: str
     align_backend: str
@@ -21,10 +22,10 @@ def map_whisperx_options(
 ) -> WhisperXCompatRequest:
     return WhisperXCompatRequest(
         runtime_policy="permissive",
+        require_alignment=align_model is not None,
         require_diarization=diarize,
         diarize_backend="pyannote" if diarize else "none",
         align_backend="wav2vec2" if align_model else "none",
         output_format=output_format,
         batch_size=batch_size,
     )
-
