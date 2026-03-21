@@ -55,6 +55,15 @@ When alignment runs, result JSON metadata now records both `alignment_strategy` 
 `scripts/build_alignment_text_map.py` can generate a generic starter JSON map for any manifest that includes non-latin tokens.
 If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non-latin transcripts can be pre-romanized before alignment.
 
+Alignment language/token resolution currently follows this order:
+
+1. `OMEGA_ALIGNMENT_TEXT_MAP` if a per-word override exists
+2. native latin-script tokenization through `torchaudio` `MMS_FA`
+3. built-in kana romanization for Japanese kana-only text
+4. `OMEGA_ALIGNMENT_JA_READING_MAP` when Japanese words need reading overrides
+5. `OMEGA_ALIGNMENT_ROMANIZER` for other non-latin languages
+6. otherwise `ALIGNMENT_LANGUAGE_UNSUPPORTED`
+
 ## Notes
 
 - Real transcription requires the optional `faster-whisper` dependency.
@@ -62,6 +71,7 @@ If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non
 - `omega doctor` now reports known issue codes and recommended actions for missing runtime pieces.
 - `omega doctor` also reports whether alignment maps and pyannote speaker-hint env vars are configured.
 - `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
+- `scripts/run_alignment_smoke.py` runs fixture-backed alignment routing checks for `D1_SHORT_JA` and `D2_SHORT_EN`.
 - `docs/VALIDATION_DATASET_CANDIDATES.md` lists Google-first validation dataset candidates.
 - `scripts/export_google_fleurs_fixtures.py` can export local D1/D2 fixture wavs from `google/fleurs`, including a direct repo fallback for older `datasets` versions.
 - `scripts/build_long_fixture.py` can concatenate existing fixture wavs into a local D3 long-form validation input.

@@ -20,6 +20,7 @@ class ValidationReportTests(unittest.TestCase):
         self.assertEqual(report["doctor"]["payload"], {"status": "ok"})
         self.assertEqual(report["tests"]["returncode"], 0)
         self.assertIsNone(report["smoke"])
+        self.assertIsNone(report["alignment_smoke"])
 
     @patch("scripts.generate_validation_report.platform.platform", return_value="test-platform")
     @patch("scripts.generate_validation_report.subprocess.run")
@@ -34,6 +35,20 @@ class ValidationReportTests(unittest.TestCase):
 
         self.assertEqual(report["smoke"]["returncode"], 1)
         self.assertEqual(report["smoke"]["stderr"], "smoke failed")
+
+    @patch("scripts.generate_validation_report.platform.platform", return_value="test-platform")
+    @patch("scripts.generate_validation_report.subprocess.run")
+    def test_build_report_can_include_alignment_smoke(self, run_mock, _platform_mock) -> None:
+        run_mock.side_effect = [
+            type("Completed", (), {"returncode": 0, "stdout": '{"status":"ok"}', "stderr": ""})(),
+            type("Completed", (), {"returncode": 0, "stdout": "tests ok", "stderr": ""})(),
+            type("Completed", (), {"returncode": 0, "stdout": '{"all_passed": true}', "stderr": ""})(),
+        ]
+
+        report = build_report(include_smoke=False, include_alignment_smoke=True)
+
+        self.assertEqual(report["alignment_smoke"]["returncode"], 0)
+        self.assertEqual(report["alignment_smoke"]["payload"], {"all_passed": True})
 
 
 if __name__ == "__main__":

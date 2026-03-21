@@ -177,6 +177,14 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(report["pyannote_min_speakers"], 1)
         self.assertEqual(report["pyannote_max_speakers"], 3)
 
+    def test_doctor_reports_alignment_strategy_summary(self) -> None:
+        report = DoctorReport.collect().to_dict()
+
+        self.assertIn("OMEGA_ALIGNMENT_TEXT_MAP", report["alignment_language_strategy"])
+        self.assertIn("OMEGA_ALIGNMENT_JA_READING_MAP", report["alignment_language_strategy"])
+        self.assertIn("OMEGA_ALIGNMENT_ROMANIZER", report["alignment_language_strategy"])
+        self.assertIn("unsupported", report["alignment_language_strategy"])
+
 
 if __name__ == "__main__":
     unittest.main()

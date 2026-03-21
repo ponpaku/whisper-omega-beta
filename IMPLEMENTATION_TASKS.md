@@ -69,7 +69,7 @@
   - `doctor` に alignment strategy summary をさらに載せる
 
 ### A3. language/model 解決戦略を明文化する
-- 状態: 未着手
+- 状態: 完了
 - 目的: 言語ごとに「何で alignment するか」を仕様化する
 - 完了条件:
   - latin-script
@@ -81,7 +81,7 @@
   の分岐が文書化されている
 
 ### A4. forced alignment smoke test を実データに接続する
-- 状態: 未着手
+- 状態: 完了
 - 完了条件:
   - D2_SHORT_EN に対する alignment smoke test を 1 本固定
   - D1_SHORT_JA に対する kana / reading-map 経路を 1 本固定
@@ -214,7 +214,5 @@
 
 ## 直近の次アクション
 
-- `doctor` に alignment strategy / map priority の説明をもう一段追加する
-- D2_SHORT_EN を使った alignment smoke test を固定する
 - D4 diarization fixture を 2 ケース以上に増やす
 - WhisperX 互換対象表を Appendix B と README に反映する

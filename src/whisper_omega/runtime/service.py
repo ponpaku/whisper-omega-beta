@@ -450,6 +450,7 @@ class DoctorReport:
         )
 
     def to_dict(self) -> dict:
+        alignment_strategy = _alignment_language_strategy_summary()
         return {
             "python_version": self.python_version,
             "platform": self.platform_name,
@@ -476,7 +477,7 @@ class DoctorReport:
             "alignment_text_map_configured": self.alignment_text_map_configured,
             "alignment_ja_reading_map_configured": self.alignment_ja_reading_map_configured,
             "alignment_map_issue_code": self.alignment_map_issue_code,
-            "alignment_language_strategy": "latin-script languages via torchaudio MMS_FA",
+            "alignment_language_strategy": alignment_strategy,
             "pyannote_num_speakers": self.pyannote_num_speakers,
             "pyannote_min_speakers": self.pyannote_min_speakers,
             "pyannote_max_speakers": self.pyannote_max_speakers,
@@ -488,6 +489,7 @@ class DoctorReport:
         }
 
     def to_lines(self) -> list[str]:
+        alignment_strategy = _alignment_language_strategy_summary()
         return [
             f"Python: {self.python_version}",
             f"Platform: {self.platform_name}",
@@ -508,7 +510,7 @@ class DoctorReport:
             f"alignment romanizer: {'configured' if self.alignment_romanizer_configured else 'not configured'}",
             f"alignment text map: {'configured' if self.alignment_text_map_configured else self.alignment_map_issue_code or 'not configured'}",
             f"alignment ja map: {'configured' if self.alignment_ja_reading_map_configured else self.alignment_map_issue_code or 'not configured'}",
-            "alignment strategy: latin-script languages via torchaudio MMS_FA",
+            f"alignment strategy: {alignment_strategy}",
             f"pyannote speaker hints: num={self.pyannote_num_speakers} min={self.pyannote_min_speakers} max={self.pyannote_max_speakers}",
             f"cache dir: {self.cache_dir} ({'writable' if self.cache_dir_writable else 'not writable'})",
             f"auto device: {self.detected_device}",
@@ -558,3 +560,12 @@ def _recommended_actions(issue_codes: list[str]) -> list[str]:
     if "OUTPUT_PERMISSION_DENIED" in issue_codes:
         actions.append("Choose a writable cache/output directory.")
     return actions
+
+
+def _alignment_language_strategy_summary() -> str:
+    return (
+        "torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; "
+        "latin-script uses native tokens; ja uses built-in kana romanizer or "
+        "OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other "
+        "non-latin languages; otherwise unsupported"
+    )

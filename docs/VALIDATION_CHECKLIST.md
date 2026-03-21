@@ -16,6 +16,7 @@
 - `python3 scripts/build_diarization_fixture.py fixtures/d2_short_en/12952903060751652532.wav fixtures/d2_short_en/15158676295442294624.wav fixtures/d4_diarization/d4_mix_01.wav --offset-ms 1200`
 - `python3 scripts/build_failure_fixtures.py fixtures/d1_short_ja/10411584430488337925.wav fixtures/d5_failure_injection`
 - `python3 scripts/generate_validation_report.py --output validation-report.json`
+- `python3 scripts/generate_validation_report.py --include-alignment-smoke --output validation-report.json`
 - `PYTHONPATH=src python3 -m whisper_omega setup core`
 - `PYTHONPATH=src python3 -m whisper_omega setup validation`
 - `PYTHONPATH=src python3 -m whisper_omega transcribe <tmp.wav> --device cpu --emit-result-json always`
@@ -34,6 +35,7 @@
 - `build_diarization_fixture.py` は D4_DIARIZATION 向けの synthetic mixture と recipe JSON を作れる
 - `build_failure_fixtures.py` は D5_FAILURE_INJECTION 向けの decode failure fixture を作れる
 - `generate_validation_report.py` は doctor / unittest / smoke の結果を JSON へまとめられる
+- `run_alignment_smoke.py` は `fixtures/d2_short_en/manifest.json` と `fixtures/d1_short_ja/manifest.json` を使って alignment routing smoke を返せる
 - `docs/VALIDATION_DATASET_CANDIDATES.md` は Google-first の dataset 候補を示す
 - `docs/VALIDATION_DATASET_MANIFEST.md` は D1/D2 の実際の local fixture hash / duration を固定する
 - `setup core` は documented path を返す
@@ -41,6 +43,7 @@
 - `transcribe` は `faster-whisper` 未導入環境では `DEPENDENCY_MISSING` の JSON failure を返す
 - `faster-whisper` 導入後は CPU 上で end-to-end smoke test が成功する
 - `align` extra 導入後は latin-script 音声と kana-only Japanese に対して `wav2vec2` alignment が成功する
+- alignment の token resolution は `OMEGA_ALIGNMENT_TEXT_MAP` -> latin native / Japanese kana or reading map -> `OMEGA_ALIGNMENT_ROMANIZER` -> unsupported の順で固定されている
 - `OMEGA_ALIGNMENT_JA_READING_MAP` 設定時は kanji を含む日本語 transcript を読み仮名経由で alignment に流せる
 - `OMEGA_ALIGNMENT_TEXT_MAP` 設定時は任意言語の語を normalized token へ上書きできる
 - `scripts/build_ja_reading_map.py <manifest.json> --output ja_reading_map.json` で読み辞書のたたき台を作れる

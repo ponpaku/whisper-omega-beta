@@ -28,7 +28,7 @@ def run_command(cmd: list[str], cwd: Path | None = None) -> dict:
     }
 
 
-def build_report(include_smoke: bool) -> dict:
+def build_report(include_smoke: bool, include_alignment_smoke: bool = False) -> dict:
     python_exe = sys.executable
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(ROOT / "src"))
@@ -74,6 +74,7 @@ def build_report(include_smoke: bool) -> dict:
             "stderr": tests.stderr,
         },
         "smoke": None,
+        "alignment_smoke": None,
     }
 
     if include_smoke:
@@ -90,16 +91,42 @@ def build_report(include_smoke: bool) -> dict:
             "stderr": smoke.stderr,
         }
 
+    if include_alignment_smoke:
+        alignment_smoke = subprocess.run(
+            [python_exe, "scripts/run_alignment_smoke.py"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        alignment_smoke_payload = None
+        if alignment_smoke.returncode == 0:
+            try:
+                alignment_smoke_payload = json.loads(alignment_smoke.stdout)
+            except json.JSONDecodeError:
+                alignment_smoke_payload = None
+        report["alignment_smoke"] = {
+            "returncode": alignment_smoke.returncode,
+            "payload": alignment_smoke_payload,
+            "stdout": alignment_smoke.stdout,
+            "stderr": alignment_smoke.stderr,
+        }
+
     return report
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate a local validation report JSON.")
     parser.add_argument("--include-smoke", action="store_true", help="Run scripts/run_smoke.sh as part of the report.")
+    parser.add_argument(
+        "--include-alignment-smoke",
+        action="store_true",
+        help="Run scripts/run_alignment_smoke.py as part of the report.",
+    )
     parser.add_argument("--output", type=Path, help="Optional output path for the report JSON.")
     args = parser.parse_args()
 
-    report = build_report(include_smoke=args.include_smoke)
+    report = build_report(include_smoke=args.include_smoke, include_alignment_smoke=args.include_alignment_smoke)
     payload = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         args.output.write_text(payload, encoding="utf-8")
