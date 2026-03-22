@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import importlib.util
+import json
 import os
+import tempfile
 from typing import Iterable
 import wave
 
@@ -118,6 +120,110 @@ class ChannelDiarizationBackend(DiarizationBackend):
             for speaker_id in ("CHANNEL_LEFT", "CHANNEL_RIGHT")
             if speaker_id in used_speakers
         ]
+        return DiarizationOutcome(
+            segments=assigned_segments,
+            words=assigned_words,
+            speakers=speakers,
+        )
+
+
+class NemoDiarizationBackend(DiarizationBackend):
+    name = "nemo"
+
+    def capability(self) -> tuple[bool, str | None]:
+        if importlib.util.find_spec("nemo") is None:
+            return (False, "DIARIZATION_BACKEND_UNAVAILABLE")
+        if importlib.util.find_spec("omegaconf") is None:
+            return (False, "DIARIZATION_BACKEND_UNAVAILABLE")
+        config_path = os.environ.get("OMEGA_NEMO_CONFIG")
+        if config_path and not os.access(config_path, os.R_OK):
+            return (False, "CONFIG_INVALID")
+        return (True, None)
+
+    def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
+        audio_path = os.environ.get("OMEGA_AUDIO_PATH")
+        if not audio_path:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="CONFIG_INVALID",
+                category="configuration",
+                message="OMEGA_AUDIO_PATH is required for nemo diarization",
+                retryable=False,
+            )
+
+        try:
+            from nemo.collections.asr.models import ClusteringDiarizer
+            from omegaconf import OmegaConf
+        except Exception:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="DIARIZATION_BACKEND_UNAVAILABLE",
+                category="dependency",
+                message="nemo diarization dependencies are not installed",
+                retryable=False,
+            )
+
+        try:
+            with tempfile.TemporaryDirectory(prefix="omega-nemo-") as tmpdir:
+                tmp_root = os.path.abspath(tmpdir)
+                manifest_path = os.path.join(tmp_root, "manifest.json")
+                out_dir = os.path.join(tmp_root, "out")
+                os.makedirs(out_dir, exist_ok=True)
+                _write_nemo_manifest(audio_path, manifest_path)
+                config = _build_nemo_config(OmegaConf, manifest_path, out_dir)
+                diarizer = ClusteringDiarizer(cfg=config)
+                diarizer.diarize(paths2audio_files=[audio_path], batch_size=1)
+                speaker_turns = _parse_nemo_rttm(out_dir, audio_path)
+        except ValueError as exc:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="CONFIG_INVALID",
+                category="configuration",
+                message=str(exc),
+                retryable=False,
+            )
+        except FileNotFoundError as exc:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="NEMO_OUTPUT_MISSING",
+                category="runtime",
+                message=str(exc),
+                retryable=False,
+            )
+        except Exception as exc:
+            code, category = _classify_nemo_exception(exc)
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code=code,
+                category=category,
+                message=str(exc),
+                retryable=category == "runtime",
+            )
+
+        if not speaker_turns:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="NEMO_OUTPUT_MISSING",
+                category="runtime",
+                message="nemo diarization did not produce RTTM speaker turns",
+                retryable=False,
+            )
+
+        assigned_segments = [_with_speaker(segment, _speaker_for_interval(segment.start, segment.end, speaker_turns)) for segment in segments]
+        assigned_words = [_with_word_speaker(word, _speaker_for_interval(word.start, word.end, speaker_turns)) for word in words]
+        speakers = _speakers_from_turns(speaker_turns)
         return DiarizationOutcome(
             segments=assigned_segments,
             words=assigned_words,
@@ -304,6 +410,140 @@ def _classify_pyannote_exception(exc: Exception) -> tuple[str, str]:
     if any(token in message for token in ("not found", "repository", "revision", "model", "does not exist")):
         return ("DIARIZATION_MODEL_UNAVAILABLE", "backend")
     return ("DIARIZATION_BACKEND_UNAVAILABLE", "backend")
+
+
+def _classify_nemo_exception(exc: Exception) -> tuple[str, str]:
+    message = str(exc).lower()
+    if any(token in message for token in ("config", "omegaconf", "yaml")):
+        return ("CONFIG_INVALID", "configuration")
+    if any(token in message for token in ("not found", "model", "checkpoint", "pretrained")):
+        return ("NEMO_MODEL_UNAVAILABLE", "backend")
+    return ("NEMO_RUNTIME_FAILURE", "runtime")
+
+
+def _write_nemo_manifest(audio_path: str, manifest_path: str) -> None:
+    payload = {
+        "audio_filepath": audio_path,
+        "offset": 0,
+        "duration": None,
+        "label": "infer",
+        "text": "-",
+        "num_speakers": _nemo_num_speakers(),
+        "rttm_filepath": None,
+        "uem_filepath": None,
+    }
+    with open(manifest_path, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
+
+def _build_nemo_config(omegaconf, manifest_path: str, out_dir: str):
+    config_data = {
+        "diarizer": {
+            "manifest_filepath": manifest_path,
+            "out_dir": out_dir,
+            "oracle_vad": False,
+            "collar": 0.25,
+            "ignore_overlap": True,
+            "vad": {
+                "model_path": os.environ.get("OMEGA_NEMO_VAD_MODEL", "vad_multilingual_marblenet"),
+                "external_vad_manifest": None,
+                "parameters": {
+                    "window_length_in_sec": 0.15,
+                    "shift_length_in_sec": 0.01,
+                    "smoothing": "median",
+                    "overlap": 0.875,
+                },
+            },
+            "speaker_embeddings": {
+                "model_path": os.environ.get("OMEGA_NEMO_SPEAKER_MODEL", "titanet_large"),
+                "parameters": {
+                    "window_length_in_sec": 1.5,
+                    "shift_length_in_sec": 0.75,
+                    "multiscale_weights": None,
+                    "save_embeddings": False,
+                },
+            },
+            "clustering": {
+                "parameters": {
+                    "oracle_num_speakers": _nemo_num_speakers() is not None,
+                    "max_num_speakers": _nemo_max_speakers(),
+                }
+            },
+        }
+    }
+    config = omegaconf.create(config_data)
+    user_config_path = os.environ.get("OMEGA_NEMO_CONFIG")
+    if user_config_path:
+        if not os.access(user_config_path, os.R_OK):
+            raise ValueError("OMEGA_NEMO_CONFIG must point to a readable yaml file")
+        config = omegaconf.merge(config, omegaconf.load(user_config_path))
+    return config
+
+
+def _nemo_num_speakers() -> int | None:
+    value = os.environ.get("OMEGA_NEMO_NUM_SPEAKERS") or os.environ.get("OMEGA_PYANNOTE_NUM_SPEAKERS")
+    if not value:
+        return None
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise ValueError("OMEGA_NEMO_NUM_SPEAKERS must be an integer") from exc
+    if parsed <= 0:
+        raise ValueError("OMEGA_NEMO_NUM_SPEAKERS must be greater than 0")
+    return parsed
+
+
+def _nemo_max_speakers() -> int:
+    value = os.environ.get("OMEGA_NEMO_MAX_SPEAKERS") or os.environ.get("OMEGA_PYANNOTE_MAX_SPEAKERS") or "8"
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise ValueError("OMEGA_NEMO_MAX_SPEAKERS must be an integer") from exc
+    if parsed <= 0:
+        raise ValueError("OMEGA_NEMO_MAX_SPEAKERS must be greater than 0")
+    return parsed
+
+
+def _parse_nemo_rttm(out_dir: str, audio_path: str) -> list[tuple[float, float, str]]:
+    stem = os.path.splitext(os.path.basename(audio_path))[0]
+    candidates: list[str] = []
+    for root, _, files in os.walk(out_dir):
+        for name in files:
+            if not name.endswith(".rttm"):
+                continue
+            if os.path.splitext(name)[0] == stem:
+                candidates.append(os.path.join(root, name))
+    if not candidates:
+        raise FileNotFoundError(f"nemo diarization did not produce an RTTM for {stem}")
+    return _read_rttm_turns(candidates[0])
+
+
+def _read_rttm_turns(path: str) -> list[tuple[float, float, str]]:
+    turns: list[tuple[float, float, str]] = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.strip().split()
+            if len(parts) < 8 or parts[0] != "SPEAKER":
+                continue
+            start = float(parts[3])
+            duration = float(parts[4])
+            speaker = parts[7]
+            turns.append((start, start + duration, speaker))
+    return turns
+
+
+def _speakers_from_turns(speaker_turns: list[tuple[float, float, str]]) -> list[Speaker]:
+    bounds: dict[str, tuple[float, float]] = {}
+    for start, end, speaker in speaker_turns:
+        if speaker not in bounds:
+            bounds[speaker] = (start, end)
+            continue
+        current_start, current_end = bounds[speaker]
+        bounds[speaker] = (min(current_start, start), max(current_end, end))
+    return [
+        Speaker(id=speaker, start=start, end=end, label=speaker)
+        for speaker, (start, end) in sorted(bounds.items())
+    ]
 
 
 def _load_stereo_channel_analysis(audio_path: str) -> _StereoChannelAnalysis:

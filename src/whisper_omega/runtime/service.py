@@ -15,6 +15,7 @@ from whisper_omega.asr.faster_whisper_backend import FasterWhisperBackend, depen
 from whisper_omega.diarize.base import (
     ChannelDiarizationBackend,
     DiarizationBackend,
+    NemoDiarizationBackend,
     NoopDiarizationBackend,
     UnavailablePyannoteBackend,
 )
@@ -259,6 +260,8 @@ class TranscriptionService:
     def _make_diarization_backend(name: str) -> DiarizationBackend:
         if name == "pyannote":
             return UnavailablePyannoteBackend()
+        if name == "nemo":
+            return NemoDiarizationBackend()
         if name == "channel":
             return ChannelDiarizationBackend()
         return NoopDiarizationBackend()
@@ -326,10 +329,13 @@ class DoctorReport:
     hf_token_configured: bool
     diarization_backends: list[str]
     diarization_backend_available: bool
+    nemo_backend_available: bool
     pyannote_backend_available: bool
     alignment_backend_available: bool
     diarization_ready: bool
     diarization_issue_code: str | None
+    nemo_ready: bool
+    nemo_issue_code: str | None
     pyannote_ready: bool
     pyannote_issue_code: str | None
     diarization_decode_ready: bool
@@ -357,15 +363,18 @@ class DoctorReport:
         torchaudio_available = _module_available("torchaudio")
         torchcodec_available = _module_available("torchcodec")
         diarization_backend = ChannelDiarizationBackend()
+        nemo_backend = NemoDiarizationBackend()
         pyannote_backend = UnavailablePyannoteBackend()
         alignment_backend = Wav2Vec2AlignmentBackend()
-        diarization_backends = ["none", "channel", "pyannote"]
+        diarization_backends = ["none", "channel", "nemo", "pyannote"]
         diarization_backend_available = True
+        nemo_backend_available = _module_available("nemo")
         pyannote_backend_available = _module_available("pyannote.audio")
         alignment_backend_available = torchaudio_available
         ffmpeg_available = shutil.which("ffmpeg") is not None
         torchcodec_importable = torchcodec_available and ffmpeg_available and _module_importable("torchcodec")
         diarization_ready, diarization_issue_code = diarization_backend.capability()
+        nemo_ready, nemo_issue_code = nemo_backend.capability()
         pyannote_ready, pyannote_issue_code = pyannote_backend.capability()
         diarization_decode_ready = False
         diarization_decode_backend = "none"
@@ -421,6 +430,8 @@ class DoctorReport:
             known_issue_codes.append("DEPENDENCY_MISSING")
         if diarization_issue_code:
             known_issue_codes.append(diarization_issue_code)
+        if nemo_issue_code:
+            known_issue_codes.append(nemo_issue_code)
         if pyannote_issue_code:
             known_issue_codes.append(pyannote_issue_code)
         if alignment_issue_code:
@@ -446,10 +457,13 @@ class DoctorReport:
             hf_token_configured=bool(os.environ.get("HF_TOKEN")),
             diarization_backends=diarization_backends,
             diarization_backend_available=diarization_backend_available,
+            nemo_backend_available=nemo_backend_available,
             pyannote_backend_available=pyannote_backend_available,
             alignment_backend_available=alignment_backend_available,
             diarization_ready=diarization_ready,
             diarization_issue_code=diarization_issue_code,
+            nemo_ready=nemo_ready,
+            nemo_issue_code=nemo_issue_code,
             pyannote_ready=pyannote_ready,
             pyannote_issue_code=pyannote_issue_code,
             diarization_decode_ready=diarization_decode_ready,
@@ -488,10 +502,13 @@ class DoctorReport:
             "hf_token_configured": self.hf_token_configured,
             "diarization_backends": self.diarization_backends,
             "diarization_backend_available": self.diarization_backend_available,
+            "nemo_backend_available": self.nemo_backend_available,
             "pyannote_backend_available": self.pyannote_backend_available,
             "alignment_backend_available": self.alignment_backend_available,
             "diarization_ready": self.diarization_ready,
             "diarization_issue_code": self.diarization_issue_code,
+            "nemo_ready": self.nemo_ready,
+            "nemo_issue_code": self.nemo_issue_code,
             "pyannote_ready": self.pyannote_ready,
             "pyannote_issue_code": self.pyannote_issue_code,
             "diarization_decode_ready": self.diarization_decode_ready,
@@ -531,6 +548,7 @@ class DoctorReport:
             f"HF_TOKEN: {'configured' if self.hf_token_configured else 'missing'}",
             f"diarization backends: {', '.join(self.diarization_backends)}",
             f"diarization backend: {'ready' if self.diarization_ready else self.diarization_issue_code or 'missing'}",
+            f"nemo backend: {'ready' if self.nemo_ready else self.nemo_issue_code or 'missing'}",
             f"pyannote backend: {'ready' if self.pyannote_ready else self.pyannote_issue_code or 'missing'}",
             f"diarization decode stack: {self.diarization_decode_backend if self.diarization_decode_ready else 'incomplete'}",
             f"alignment backend: {'ready' if self.alignment_ready else self.alignment_issue_code or 'missing'}",
@@ -578,6 +596,8 @@ def _recommended_actions(issue_codes: list[str]) -> list[str]:
     actions: list[str] = []
     if "DEPENDENCY_MISSING" in issue_codes:
         actions.append("Install the core extra with `python3 -m pip install '.[core]'`.")
+    if "DIARIZATION_BACKEND_UNAVAILABLE" in issue_codes:
+        actions.append("Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.")
     if "HF_TOKEN_MISSING" in issue_codes:
         actions.append("Set `HF_TOKEN` before running pyannote diarization.")
     if "AUDIO_DECODE_FAILURE" in issue_codes or "DIARIZATION_DECODE_UNAVAILABLE" in issue_codes:

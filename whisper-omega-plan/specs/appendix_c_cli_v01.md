@@ -31,7 +31,7 @@ omega transcribe INPUT [OPTIONS]
 - `--output-file PATH`
 - `--emit-result-json {auto,always,on-failure,never}`
 - `--write-failure-json`
-- `--diarize-backend {none,pyannote}`
+- `--diarize-backend {none,channel,nemo,pyannote}`
 - `--align-backend {none,wav2vec2}`
 
 ### 5.1 糖衣構文

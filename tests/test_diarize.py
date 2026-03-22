@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import torch
 
-from whisper_omega.diarize.base import ChannelDiarizationBackend, UnavailablePyannoteBackend
+from whisper_omega.diarize.base import ChannelDiarizationBackend, NemoDiarizationBackend, UnavailablePyannoteBackend
 from whisper_omega.runtime.models import Segment, Word
 
 
@@ -273,6 +273,108 @@ class DiarizeTests(unittest.TestCase):
 
         self.assertEqual(outcome.backend_errors[0].code, "DIARIZATION_CHANNELS_UNAVAILABLE")
         self.assertEqual(outcome.backend_errors[0].category, "validation")
+
+    def test_nemo_backend_assigns_speakers_from_rttm(self) -> None:
+        audio_path = self._write_stereo_wav("nemo.wav")
+        os.environ["OMEGA_AUDIO_PATH"] = str(audio_path)
+
+        class FakeOmegaConf:
+            @staticmethod
+            def create(data):
+                return data
+
+            @staticmethod
+            def merge(base, override):
+                merged = dict(base)
+                merged.update(override)
+                return merged
+
+            @staticmethod
+            def load(path):
+                _ = path
+                return {}
+
+        class FakeDiarizer:
+            def __init__(self, cfg) -> None:
+                self.cfg = cfg
+
+            def diarize(self, paths2audio_files=None, batch_size=1):
+                _ = (paths2audio_files, batch_size)
+                out_dir = Path(self.cfg["diarizer"]["out_dir"]) / "pred_rttms"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                (out_dir / "nemo.rttm").write_text(
+                    "\n".join(
+                        [
+                            "SPEAKER nemo 1 0.000 0.450 <NA> <NA> SPEAKER_00 <NA> <NA>",
+                            "SPEAKER nemo 1 0.550 0.450 <NA> <NA> SPEAKER_01 <NA> <NA>",
+                        ]
+                    ),
+                    encoding="utf-8",
+                )
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "nemo.collections.asr.models": types.SimpleNamespace(ClusteringDiarizer=FakeDiarizer),
+                "omegaconf": types.SimpleNamespace(OmegaConf=FakeOmegaConf),
+            },
+        ):
+            outcome = NemoDiarizationBackend().diarize(
+                [
+                    Segment(id=0, start=0.0, end=0.45, text="left", speaker=None),
+                    Segment(id=1, start=0.55, end=1.0, text="right", speaker=None),
+                ],
+                [
+                    Word(text="left", start=0.0, end=0.45, speaker=None, confidence=0.9),
+                    Word(text="right", start=0.55, end=1.0, speaker=None, confidence=0.9),
+                ],
+            )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.segments[0].speaker, "SPEAKER_00")
+        self.assertEqual(outcome.segments[1].speaker, "SPEAKER_01")
+
+    def test_nemo_backend_reports_missing_output(self) -> None:
+        audio_path = self._write_stereo_wav("missing-output.wav")
+        os.environ["OMEGA_AUDIO_PATH"] = str(audio_path)
+
+        class FakeOmegaConf:
+            @staticmethod
+            def create(data):
+                return data
+
+            @staticmethod
+            def merge(base, override):
+                merged = dict(base)
+                merged.update(override)
+                return merged
+
+            @staticmethod
+            def load(path):
+                _ = path
+                return {}
+
+        class FakeDiarizer:
+            def __init__(self, cfg) -> None:
+                self.cfg = cfg
+
+            def diarize(self, paths2audio_files=None, batch_size=1):
+                _ = (paths2audio_files, batch_size)
+                return None
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "nemo.collections.asr.models": types.SimpleNamespace(ClusteringDiarizer=FakeDiarizer),
+                "omegaconf": types.SimpleNamespace(OmegaConf=FakeOmegaConf),
+            },
+        ):
+            outcome = NemoDiarizationBackend().diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="mono", speaker=None)],
+                [Word(text="mono", start=0.0, end=1.0, speaker=None, confidence=0.9)],
+            )
+
+        self.assertEqual(outcome.backend_errors[0].code, "NEMO_OUTPUT_MISSING")
 
 
 if __name__ == "__main__":

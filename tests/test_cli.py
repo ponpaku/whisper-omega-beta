@@ -14,7 +14,7 @@ from whisper_omega.asr.base import ASRBackend, BackendTranscription
 from whisper_omega.align.base import UnavailableWav2Vec2Backend
 from whisper_omega.cli.main import main
 from whisper_omega.diarize.base import DiarizationBackend, DiarizationOutcome
-from whisper_omega.runtime.models import BackendError, Segment, Word
+from whisper_omega.runtime.models import BackendError, Segment, Speaker, Word
 
 
 def extract_json(output: str) -> dict:
@@ -53,6 +53,25 @@ class StereoTimedStubBackend(ASRBackend):
                 Word(text="right", start=0.55, end=1.0, speaker=None, confidence=0.9),
             ],
         )
+
+
+class NemoStubDiarizationBackend(DiarizationBackend):
+    name = "nemo"
+
+    def diarize(self, segments, words):
+        speakers = [
+            Speaker(id="SPEAKER_00", start=0.0, end=0.45, label="SPEAKER_00"),
+            Speaker(id="SPEAKER_01", start=0.55, end=1.0, label="SPEAKER_01"),
+        ]
+        mapped_segments = [
+            Segment(id=segments[0].id, start=segments[0].start, end=segments[0].end, text=segments[0].text, speaker="SPEAKER_00"),
+            Segment(id=segments[1].id, start=segments[1].start, end=segments[1].end, text=segments[1].text, speaker="SPEAKER_01"),
+        ]
+        mapped_words = [
+            Word(text=words[0].text, start=words[0].start, end=words[0].end, speaker="SPEAKER_00", confidence=words[0].confidence),
+            Word(text=words[1].text, start=words[1].start, end=words[1].end, speaker="SPEAKER_01", confidence=words[1].confidence),
+        ]
+        return DiarizationOutcome(segments=mapped_segments, words=mapped_words, speakers=speakers)
 
 
 class MissingBackend(ASRBackend):
@@ -549,6 +568,48 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["segments"][0]["speaker"], "CHANNEL_LEFT")
         self.assertEqual(payload["segments"][1]["speaker"], "CHANNEL_RIGHT")
 
+    def test_transcribe_accepts_nemo_diarization_backend(self) -> None:
+        stereo_path = self._write_stereo_wav("nemo.wav")
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    required_features=["diarization"],
+                    diarize_backend="nemo",
+                ),
+                asr_backend=StereoTimedStubBackend(),
+                diarization_backend=NemoStubDiarizationBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(stereo_path),
+                    "--device",
+                    "cpu",
+                    "--require-diarization",
+                    "--diarize-backend",
+                    "nemo",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["status"], "success")
+        self.assertEqual(payload["metadata"]["diarization_backend"], "nemo")
+        self.assertEqual(payload["segments"][0]["speaker"], "SPEAKER_00")
+        self.assertEqual(payload["segments"][1]["speaker"], "SPEAKER_01")
+
     def test_setup_align_lists_alignment_steps(self) -> None:
         result = self.runner.invoke(main, ["setup", "align"])
 
@@ -576,6 +637,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Diarization setup path:", result.output)
         self.assertIn("--diarize-backend channel", result.output)
+        self.assertIn("--diarize-backend nemo", result.output)
         self.assertIn("HF_TOKEN", result.output)
         self.assertIn("ffmpeg", result.output.lower())
 
