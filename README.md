@@ -53,6 +53,7 @@ For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --requ
 Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; if `torchaudio` is unavailable, fall back to `ffmpeg` + `torchcodec`.
 Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` for pyannote, `NEMO_MODEL_UNAVAILABLE` / `NEMO_RUNTIME_FAILURE` / `NEMO_OUTPUT_MISSING` for NeMo, plus `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` for the built-in channel backend.
 The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `--align_model` to alignment-required execution.
+To keep WhisperX compatibility stable, `omega whisperx --diarize` continues to target the `pyannote` backend by default. Use `omega transcribe --diarize-backend channel|nemo|pyannote` when you want to choose among the expanded backend set explicitly.
 For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
 Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.
 For Japanese words that include kanji, you can set `OMEGA_ALIGNMENT_JA_READING_MAP` to a JSON file that maps transcript words to kana readings before alignment.

@@ -38,6 +38,10 @@ omega transcribe INPUT [OPTIONS]
 - `--require-diarization` ≡ `--require-feature diarization`
 - `--require-alignment` ≡ `--require-feature alignment`
 
+### 5.2 WhisperX 互換フロントでの既定 backend
+- `omega whisperx --diarize` は `pyannote` backend を既定とする
+- `channel` / `nemo` は `omega transcribe --diarize-backend ...` でのみ明示選択する
+
 ## 6. `--emit-result-json` exact behavior
 ### 6.1 `always`
 - `success` / `degraded` / `failure` の全結果で JSON を `stdout` に出力する

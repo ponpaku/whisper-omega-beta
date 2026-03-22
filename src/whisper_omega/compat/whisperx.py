@@ -20,6 +20,8 @@ def map_whisperx_options(
     output_format: str,
     batch_size: int | None,
 ) -> WhisperXCompatRequest:
+    # Keep WhisperX compatibility stable: `--diarize` maps to pyannote by default,
+    # while expanded backends remain available through `omega transcribe`.
     return WhisperXCompatRequest(
         runtime_policy="permissive",
         require_alignment=align_model is not None,

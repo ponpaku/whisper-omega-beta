@@ -11,6 +11,7 @@ from click.testing import CliRunner
 from whisper_omega.align.base import UnavailableWav2Vec2Backend
 from whisper_omega.asr.base import ASRBackend, BackendTranscription
 from whisper_omega.cli.main import main
+from whisper_omega.compat.whisperx import map_whisperx_options
 from whisper_omega.diarize.base import DiarizationBackend, DiarizationOutcome
 from whisper_omega.runtime.models import BackendError, Segment, Speaker, Word
 
@@ -144,6 +145,17 @@ class CompatibilityMatrixTests(unittest.TestCase):
 
                 self.assertEqual(result.exit_code, expected_exit)
                 self.assertIn(expected_text, result.output)
+
+    def test_whisperx_diarize_stays_on_pyannote_backend(self) -> None:
+        compat = map_whisperx_options(
+            diarize=True,
+            align_model=None,
+            output_format="json",
+            batch_size=None,
+        )
+
+        self.assertTrue(compat.require_diarization)
+        self.assertEqual(compat.diarize_backend, "pyannote")
 
     def test_json_matrix_cases(self) -> None:
         payload = {
