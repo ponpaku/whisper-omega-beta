@@ -20,6 +20,7 @@ from whisper_omega.diarize.base import (
     UnavailablePyannoteBackend,
 )
 from whisper_omega.io.writers import write_json, write_srt, write_txt, write_vtt
+from whisper_omega.runtime.codes import CANONICAL_ISSUE_CODES
 from whisper_omega.runtime.models import BackendError, Fallback, Metadata, TranscriptionResult
 from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device
 
@@ -353,6 +354,7 @@ class DoctorReport:
     cache_dir_writable: bool
     detected_device: str
     known_issue_codes: list[str]
+    canonical_issue_codes: list[str]
     recommended_actions: list[str]
 
     @classmethod
@@ -440,6 +442,7 @@ class DoctorReport:
             known_issue_codes.append(alignment_map_issue_code)
         if not cache_dir_writable:
             known_issue_codes.append("OUTPUT_PERMISSION_DENIED")
+        known_issue_codes = _unique_codes(known_issue_codes)
         recommended_actions = _recommended_actions(known_issue_codes)
         return cls(
             python_version=sys.version.split()[0],
@@ -481,11 +484,92 @@ class DoctorReport:
             cache_dir_writable=cache_dir_writable,
             detected_device=effective_device("auto"),
             known_issue_codes=known_issue_codes,
+            canonical_issue_codes=list(CANONICAL_ISSUE_CODES),
             recommended_actions=recommended_actions,
         )
 
     def to_dict(self) -> dict:
         alignment_strategy = _alignment_language_strategy_summary()
+        diarization_statuses = {
+            "channel": _status_entry(
+                installed=True,
+                importable=True,
+                ready=self.diarization_ready,
+                issue_code=self.diarization_issue_code,
+                recommended_actions=self.recommended_actions_for(self.diarization_issue_code),
+            ),
+            "nemo": _status_entry(
+                installed=self.nemo_backend_available,
+                importable=self.nemo_backend_available,
+                ready=self.nemo_ready,
+                issue_code=self.nemo_issue_code,
+                recommended_actions=self.recommended_actions_for(self.nemo_issue_code),
+            ),
+            "pyannote": _status_entry(
+                installed=self.pyannote_backend_available,
+                importable=self.pyannote_backend_available,
+                ready=self.pyannote_ready,
+                issue_code=self.pyannote_issue_code,
+                recommended_actions=self.recommended_actions_for(self.pyannote_issue_code),
+            ),
+        }
+        decode_statuses = {
+            "torchaudio": _status_entry(
+                installed=self.torchaudio_available,
+                importable=self.torchaudio_available,
+                ready=self.torchaudio_available,
+                issue_code=None if self.torchaudio_available else "DIARIZATION_DECODE_UNAVAILABLE",
+                recommended_actions=self.recommended_actions_for(
+                    None if self.torchaudio_available else "DIARIZATION_DECODE_UNAVAILABLE"
+                ),
+            ),
+            "ffmpeg_torchcodec": _status_entry(
+                installed=self.ffmpeg_available and self.torchcodec_available,
+                importable=self.torchcodec_importable,
+                ready=self.ffmpeg_available and self.torchcodec_importable,
+                issue_code=None if (self.ffmpeg_available and self.torchcodec_importable) else "DIARIZATION_DECODE_UNAVAILABLE",
+                recommended_actions=self.recommended_actions_for(
+                    None if (self.ffmpeg_available and self.torchcodec_importable) else "DIARIZATION_DECODE_UNAVAILABLE"
+                ),
+            ),
+        }
+        alignment_support = {
+            "native_latin": _status_entry(
+                installed=self.alignment_backend_available,
+                importable=self.alignment_backend_available,
+                ready=self.alignment_ready,
+                issue_code=self.alignment_issue_code,
+                recommended_actions=self.recommended_actions_for(self.alignment_issue_code),
+            ),
+            "ja_kana": _status_entry(
+                installed=self.alignment_backend_available,
+                importable=self.alignment_backend_available,
+                ready=self.alignment_ready,
+                issue_code=self.alignment_issue_code,
+                recommended_actions=self.recommended_actions_for(self.alignment_issue_code),
+            ),
+            "ja_reading_map": _status_entry(
+                installed=True,
+                importable=True,
+                ready=self.alignment_ja_reading_map_configured and self.alignment_ready,
+                issue_code=None if self.alignment_ja_reading_map_configured else self.alignment_map_issue_code,
+                recommended_actions=self.recommended_actions_for(self.alignment_map_issue_code),
+            ),
+            "text_map": _status_entry(
+                installed=True,
+                importable=True,
+                ready=self.alignment_text_map_configured and self.alignment_ready,
+                issue_code=None if self.alignment_text_map_configured else self.alignment_map_issue_code,
+                recommended_actions=self.recommended_actions_for(self.alignment_map_issue_code),
+            ),
+            "romanizer": _status_entry(
+                installed=True,
+                importable=True,
+                ready=self.alignment_romanizer_configured and self.alignment_ready,
+                issue_code=None if self.alignment_romanizer_configured else None,
+                recommended_actions=[] if self.alignment_romanizer_configured else ["Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages."],
+            ),
+        }
         return {
             "python_version": self.python_version,
             "platform": self.platform_name,
@@ -527,7 +611,13 @@ class DoctorReport:
             "cache_dir_writable": self.cache_dir_writable,
             "detected_device": self.detected_device,
             "known_issue_codes": self.known_issue_codes,
+            "canonical_issue_codes": self.canonical_issue_codes,
             "recommended_actions": self.recommended_actions,
+            "backend_statuses": {
+                "diarization": diarization_statuses,
+                "decode": decode_statuses,
+                "alignment": alignment_support,
+            },
         }
 
     def to_lines(self) -> list[str]:
@@ -560,8 +650,14 @@ class DoctorReport:
             f"cache dir: {self.cache_dir} ({'writable' if self.cache_dir_writable else 'not writable'})",
             f"auto device: {self.detected_device}",
             f"known issues: {', '.join(self.known_issue_codes) if self.known_issue_codes else 'none'}",
+            f"canonical issue codes: {', '.join(self.canonical_issue_codes)}",
             f"recommended actions: {' | '.join(self.recommended_actions) if self.recommended_actions else 'none'}",
         ]
+
+    def recommended_actions_for(self, issue_code: str | None) -> list[str]:
+        if not issue_code:
+            return []
+        return _recommended_actions([issue_code])
 
 
 def _module_available(module_name: str) -> bool:
@@ -607,6 +703,34 @@ def _recommended_actions(issue_codes: list[str]) -> list[str]:
     if "OUTPUT_PERMISSION_DENIED" in issue_codes:
         actions.append("Choose a writable cache/output directory.")
     return actions
+
+
+def _status_entry(
+    *,
+    installed: bool,
+    importable: bool,
+    ready: bool,
+    issue_code: str | None,
+    recommended_actions: list[str],
+) -> dict:
+    return {
+        "installed": installed,
+        "importable": importable,
+        "ready": ready,
+        "issue_code": issue_code,
+        "recommended_actions": recommended_actions,
+    }
+
+
+def _unique_codes(codes: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for code in codes:
+        if code in seen:
+            continue
+        seen.add(code)
+        unique.append(code)
+    return unique
 
 
 def _alignment_language_strategy_summary() -> str:

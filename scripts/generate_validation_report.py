@@ -32,6 +32,9 @@ def build_report(
     include_smoke: bool,
     include_alignment_smoke: bool = False,
     include_diarization_smoke: bool = False,
+    include_pyannote_acceptance: bool = False,
+    include_nemo_acceptance: bool = False,
+    include_gpu_acceptance: bool = False,
 ) -> dict:
     python_exe = sys.executable
     env = os.environ.copy()
@@ -80,6 +83,9 @@ def build_report(
         "smoke": None,
         "alignment_smoke": None,
         "diarization_smoke": None,
+        "pyannote_acceptance": None,
+        "nemo_acceptance": None,
+        "gpu_acceptance": None,
     }
 
     if include_smoke:
@@ -138,6 +144,69 @@ def build_report(
             "stderr": diarization_smoke.stderr,
         }
 
+    if include_pyannote_acceptance:
+        pyannote_acceptance = subprocess.run(
+            [python_exe, "scripts/run_pyannote_acceptance.py"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        pyannote_acceptance_payload = None
+        if pyannote_acceptance.stdout:
+            try:
+                pyannote_acceptance_payload = json.loads(pyannote_acceptance.stdout)
+            except json.JSONDecodeError:
+                pyannote_acceptance_payload = None
+        report["pyannote_acceptance"] = {
+            "returncode": pyannote_acceptance.returncode,
+            "payload": pyannote_acceptance_payload,
+            "stdout": pyannote_acceptance.stdout,
+            "stderr": pyannote_acceptance.stderr,
+        }
+
+    if include_nemo_acceptance:
+        nemo_acceptance = subprocess.run(
+            [python_exe, "scripts/run_nemo_acceptance.py"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        nemo_acceptance_payload = None
+        if nemo_acceptance.stdout:
+            try:
+                nemo_acceptance_payload = json.loads(nemo_acceptance.stdout)
+            except json.JSONDecodeError:
+                nemo_acceptance_payload = None
+        report["nemo_acceptance"] = {
+            "returncode": nemo_acceptance.returncode,
+            "payload": nemo_acceptance_payload,
+            "stdout": nemo_acceptance.stdout,
+            "stderr": nemo_acceptance.stderr,
+        }
+
+    if include_gpu_acceptance:
+        gpu_acceptance = subprocess.run(
+            [python_exe, "scripts/run_gpu_acceptance.py"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        gpu_acceptance_payload = None
+        if gpu_acceptance.stdout:
+            try:
+                gpu_acceptance_payload = json.loads(gpu_acceptance.stdout)
+            except json.JSONDecodeError:
+                gpu_acceptance_payload = None
+        report["gpu_acceptance"] = {
+            "returncode": gpu_acceptance.returncode,
+            "payload": gpu_acceptance_payload,
+            "stdout": gpu_acceptance.stdout,
+            "stderr": gpu_acceptance.stderr,
+        }
+
     return report
 
 
@@ -154,6 +223,21 @@ def main() -> int:
         action="store_true",
         help="Run scripts/run_diarization_smoke.py as part of the report.",
     )
+    parser.add_argument(
+        "--include-pyannote-acceptance",
+        action="store_true",
+        help="Run scripts/run_pyannote_acceptance.py as part of the report.",
+    )
+    parser.add_argument(
+        "--include-nemo-acceptance",
+        action="store_true",
+        help="Run scripts/run_nemo_acceptance.py as part of the report.",
+    )
+    parser.add_argument(
+        "--include-gpu-acceptance",
+        action="store_true",
+        help="Run scripts/run_gpu_acceptance.py as part of the report.",
+    )
     parser.add_argument("--output", type=Path, help="Optional output path for the report JSON.")
     args = parser.parse_args()
 
@@ -161,6 +245,9 @@ def main() -> int:
         include_smoke=args.include_smoke,
         include_alignment_smoke=args.include_alignment_smoke,
         include_diarization_smoke=args.include_diarization_smoke,
+        include_pyannote_acceptance=args.include_pyannote_acceptance,
+        include_nemo_acceptance=args.include_nemo_acceptance,
+        include_gpu_acceptance=args.include_gpu_acceptance,
     )
     payload = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:

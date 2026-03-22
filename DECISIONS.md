@@ -14,4 +14,4 @@
 - Whether to enforce BCP-47 for `language`
 - Final precedence for `--hf_token` vs environment variables
 - Final fixed CTranslate2 patch version
-- Validation dataset file roster and hashes
+- Whether GPU `AUDIO_DECODE_FAILURE` should remain a documented residual risk or be promoted back to a release blocker after decode stack changes

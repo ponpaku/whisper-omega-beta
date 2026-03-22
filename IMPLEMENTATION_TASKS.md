@@ -27,6 +27,7 @@
   - GPU 実機では decode/backend 条件により `AUDIO_DECODE_FAILURE` が残る場合がある
   - non-latin alignment は一般解ではなく map / romanizer 補助を前提にする
   - pyannote diarization の本番安定性は `HF_TOKEN` と依存スタックに左右される
+  - nemo diarization の本番 acceptance は依存導入済み環境での追加確認が必要
 
 ## 完成条件
 
@@ -160,6 +161,7 @@
   - alignment smoke
   - diarization smoke
   を 1 つの report に集約できる
+  - pyannote / nemo / gpu acceptance の block or pass 状態も同じ report で追跡できる
 
 ## Milestone 5: 契約と運用の仕上げ
 
@@ -188,6 +190,15 @@
   - DECISIONS と IMPLEMENTATION_TASKS が最新
   - validation report が最新
   - 完成宣言に耐える変更履歴が揃う
+
+## 正本整理
+
+- `README.md`: 最短導線と文書ナビゲーション
+- `docs/VALIDATION_CHECKLIST.md`: ローカル acceptance の正本
+- `docs/VALIDATION_DATASET_MANIFEST.md`: 固定 fixture roster の正本
+- `docs/BENCHMARK_TEMPLATE.md`: benchmark / GPU residual risk の正本
+- `whisper-omega-plan/specs/appendix_*.md`: 仕様の正本
+- `whisper-omega-plan/タスクリスト_20260322.md`: 作業時点のスナップショット
 
 ## 実行順
 

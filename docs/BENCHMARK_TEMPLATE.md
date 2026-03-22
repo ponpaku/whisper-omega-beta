@@ -9,6 +9,7 @@
 - GPU: NVIDIA GeForce RTX 3090
 - Driver: 595.79
 - CUDA: available via `torch.cuda`; local smoke GPU path currently fails before successful decode
+- GPU acceptance command: `PYTHONPATH=src ./.venv-system/bin/python scripts/run_gpu_acceptance.py`
 - Model: `tiny`
 - Backend: `faster-whisper`
 - Benchmark command: `python3 scripts/benchmark_smoke.py tmp_smoke.wav --model tiny --repeats 2 --devices cpu cuda`
@@ -28,4 +29,10 @@
 - WhisperX ratio: not yet measured
 - faster-whisper ratio: local baseline only; direct comparison not yet measured
 - 60-minute batch success rate: not yet measured
-- strict-gpu fallback violations: none observed in unit/contract tests; GPU smoke still failing with `AUDIO_DECODE_FAILURE`
+- strict-gpu fallback violations: none observed in unit/contract tests or `scripts/run_gpu_acceptance.py`
+- GPU acceptance snapshot:
+  - `device=auto` -> `actual_device=cuda`, residual `AUDIO_DECODE_FAILURE`
+  - `device=cuda` -> `actual_device=cuda`, residual `AUDIO_DECODE_FAILURE`
+  - `strict-gpu + auto` -> `actual_device=cuda`, residual `AUDIO_DECODE_FAILURE`
+- Interpretation:
+  - current GPU risk is decode-stack stability, not silent fallback away from CUDA

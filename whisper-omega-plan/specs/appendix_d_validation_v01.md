@@ -28,11 +28,11 @@ MVP 検証対象の例:
 
 ## 4. データセット固定
 MVP 正式版では以下を固定する。
-- `D1_SHORT_JA`: 日本語短尺音声 10 本、各 30〜90 秒
-- `D2_SHORT_EN`: 英語短尺音声 10 本、各 30〜90 秒
-- `D3_LONG_MIXED`: 長尺音声 6 本、各 30〜90 分
-- `D4_DIARIZATION`: 2〜4 話者混在音声 8 本
-- `D5_FAILURE_INJECTION`: 故障注入ケース 12 種
+- `D1_SHORT_JA`: 日本語短尺音声 5 本
+- `D2_SHORT_EN`: 英語短尺音声 5 本
+- `D3_LONG_MIXED`: local provisional long-form 2 本
+- `D4_DIARIZATION`: local synthetic diarization mix 3 本
+- `D5_FAILURE_INJECTION`: local failure injection 6 ケース
 
 ### 4.1 実装前に埋める固定情報
 - 各データセットのファイル名
@@ -68,6 +68,69 @@ MVP 正式版では以下を固定する。
 - `D4_DIARIZATION`: `fixtures/d4_diarization/d4_mix_01.wav` / `d4_mix_overlap_01.wav` / `d4_mix_3spk_01.wav` を local synthetic mixture として生成済み
 - `D5_FAILURE_INJECTION`: `fixtures/d5_failure_injection` に decode failure fixture を生成済み。manifest には `OUTPUT_PERMISSION_DENIED` / `DEPENDENCY_MISSING` の scenario fixture も含む
 - SHA256 / duration は `docs/VALIDATION_DATASET_MANIFEST.md` に固定
+
+### 4.4 acceptance での扱い
+- 必須ケース:
+  - `doctor --json-output`
+  - full unittest
+  - ASR smoke (`scripts/run_smoke.sh`)
+  - alignment smoke (`scripts/run_alignment_smoke.py`)
+  - diarization smoke (`scripts/run_diarization_smoke.py`)
+- 参考ケース:
+  - `pyannote` 実依存 acceptance (`scripts/run_pyannote_acceptance.py`)
+  - `nemo` 実依存 acceptance (`scripts/run_nemo_acceptance.py`)
+  - GPU 実機 acceptance (`scripts/run_gpu_acceptance.py`)
+  - `D3_LONG_MIXED` の長尺ベンチマーク
+  - `D4_DIARIZATION` の overlap 強めケース
+  - `D5_FAILURE_INJECTION` の個別 failure replay
+- 標準実行導線:
+  - `./.venv-system/bin/python scripts/run_acceptance.py`
+- 標準成果物:
+  - `validation-report.json`
+
+### 4.5 pyannote 実依存 acceptance
+- 実行コマンド:
+  - `./.venv-system/bin/python scripts/run_pyannote_acceptance.py`
+- 固定ケース:
+  - `HF_TOKEN` 未設定: `HF_TOKEN_MISSING` を返すこと
+  - `HF_TOKEN` 設定済み + `OMEGA_PYANNOTE_MIN_SPEAKERS=1` + `OMEGA_PYANNOTE_MAX_SPEAKERS=2`: success を狙うこと
+- block 条件:
+  - `faster-whisper` 未導入
+  - `pyannote.audio` 未導入
+  - `torchaudio` と `ffmpeg+torchcodec` のどちらも readiness を満たさない
+- block 時:
+  - JSON に `blocked=true` と `blocked_reasons` を残す
+  - exit code は `2`
+
+### 4.6 nemo 実依存 acceptance
+- 実行コマンド:
+  - `./.venv-system/bin/python scripts/run_nemo_acceptance.py`
+- 固定ケース:
+  - `OMEGA_NEMO_CONFIG` を無効パスにした状態: `CONFIG_INVALID` を返すこと
+  - `OMEGA_NEMO_NUM_SPEAKERS=1` + `OMEGA_NEMO_MAX_SPEAKERS=2`: success を狙うこと
+- block 条件:
+  - `faster-whisper` 未導入
+  - `nemo` 未導入
+- block 時:
+  - JSON に `blocked=true` と `blocked_reasons` を残す
+  - exit code は `2`
+
+### 4.7 GPU 実機 acceptance
+- 実行コマンド:
+  - `./.venv-system/bin/python scripts/run_gpu_acceptance.py`
+- 固定ケース:
+  - `device=auto`: `actual_device=cuda` を返すこと
+  - `device=cuda`: `GPU_UNAVAILABLE` に落ちず CUDA 経路へ入ること
+  - `runtime_policy=strict-gpu` + `device=auto`: CPU へ silent fallback しないこと
+- 残留リスクの扱い:
+  - `AUDIO_DECODE_FAILURE` は GPU 経路へ入った上での residual risk として `residual_risks` に記録する
+  - `GPU_UNAVAILABLE` は block もしくは失敗として分離する
+- block 条件:
+  - `faster-whisper` 未導入
+  - CUDA 不可
+- block 時:
+  - JSON に `blocked=true` と `blocked_reasons` を残す
+  - exit code は `2`
 
 ## 5. benchmark 種別
 - `setup`: download/setup を含む
@@ -136,14 +199,32 @@ MVP 正式版では以下を固定する。
 - `DEPENDENCY_MISSING`
 - `CONFIG_INVALID`
 - `ALIGNMENT_MODEL_UNAVAILABLE`
+- `ALIGNMENT_BACKEND_UNAVAILABLE`
+- `ALIGNMENT_LANGUAGE_UNSUPPORTED`
+- `ALIGNMENT_TEXT_UNAVAILABLE`
+- `ALIGNMENT_TEXT_UNSUPPORTED`
+- `ALIGNMENT_RUNTIME_FAILURE`
+- `ALIGNMENT_TEXT_MAP_INVALID`
 - `DIARIZATION_BACKEND_UNAVAILABLE`
+- `DIARIZATION_DECODE_UNAVAILABLE`
 - `HF_TOKEN_MISSING`
+- `DIARIZATION_AUTH_FAILURE`
+- `DIARIZATION_MODEL_UNAVAILABLE`
+- `DIARIZATION_DECODE_FAILURE`
+- `DIARIZATION_CHANNELS_UNAVAILABLE`
+- `DIARIZATION_CHANNEL_AMBIGUOUS`
+- `DIARIZATION_AUDIO_UNSUPPORTED`
+- `NEMO_MODEL_UNAVAILABLE`
+- `NEMO_RUNTIME_FAILURE`
+- `NEMO_OUTPUT_MISSING`
 - `OUTPUT_PERMISSION_DENIED`
 - `INVALID_ARGUMENT_COMBINATION`
 - `AUDIO_DECODE_FAILURE`
 - `EMPTY_INPUT`
 
+`omega doctor --json-output` はこの canonical 語彙を `canonical_issue_codes` として返し、現環境で該当したものだけを `known_issue_codes` として返す。
+
 ## 11. 未確定事項
 1. CTranslate2 の patch をどこで固定するか
-2. D1〜D4 の実ファイルセット
+2. GPU 実機 acceptance をどの母集団で固定するか
 3. failure injection を CI でどこまで自動化するか

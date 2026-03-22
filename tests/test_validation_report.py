@@ -22,6 +22,9 @@ class ValidationReportTests(unittest.TestCase):
         self.assertIsNone(report["smoke"])
         self.assertIsNone(report["alignment_smoke"])
         self.assertIsNone(report["diarization_smoke"])
+        self.assertIsNone(report["pyannote_acceptance"])
+        self.assertIsNone(report["nemo_acceptance"])
+        self.assertIsNone(report["gpu_acceptance"])
 
     @patch("scripts.generate_validation_report.platform.platform", return_value="test-platform")
     @patch("scripts.generate_validation_report.subprocess.run")
@@ -64,6 +67,48 @@ class ValidationReportTests(unittest.TestCase):
 
         self.assertEqual(report["diarization_smoke"]["returncode"], 0)
         self.assertEqual(report["diarization_smoke"]["payload"], {"all_passed": True})
+
+    @patch("scripts.generate_validation_report.platform.platform", return_value="test-platform")
+    @patch("scripts.generate_validation_report.subprocess.run")
+    def test_build_report_can_include_pyannote_acceptance(self, run_mock, _platform_mock) -> None:
+        run_mock.side_effect = [
+            type("Completed", (), {"returncode": 0, "stdout": '{"status":"ok"}', "stderr": ""})(),
+            type("Completed", (), {"returncode": 0, "stdout": "tests ok", "stderr": ""})(),
+            type("Completed", (), {"returncode": 2, "stdout": '{"blocked": true}', "stderr": ""})(),
+        ]
+
+        report = build_report(include_smoke=False, include_pyannote_acceptance=True)
+
+        self.assertEqual(report["pyannote_acceptance"]["returncode"], 2)
+        self.assertEqual(report["pyannote_acceptance"]["payload"], {"blocked": True})
+
+    @patch("scripts.generate_validation_report.platform.platform", return_value="test-platform")
+    @patch("scripts.generate_validation_report.subprocess.run")
+    def test_build_report_can_include_nemo_acceptance(self, run_mock, _platform_mock) -> None:
+        run_mock.side_effect = [
+            type("Completed", (), {"returncode": 0, "stdout": '{"status":"ok"}', "stderr": ""})(),
+            type("Completed", (), {"returncode": 0, "stdout": "tests ok", "stderr": ""})(),
+            type("Completed", (), {"returncode": 2, "stdout": '{"blocked": true}', "stderr": ""})(),
+        ]
+
+        report = build_report(include_smoke=False, include_nemo_acceptance=True)
+
+        self.assertEqual(report["nemo_acceptance"]["returncode"], 2)
+        self.assertEqual(report["nemo_acceptance"]["payload"], {"blocked": True})
+
+    @patch("scripts.generate_validation_report.platform.platform", return_value="test-platform")
+    @patch("scripts.generate_validation_report.subprocess.run")
+    def test_build_report_can_include_gpu_acceptance(self, run_mock, _platform_mock) -> None:
+        run_mock.side_effect = [
+            type("Completed", (), {"returncode": 0, "stdout": '{"status":"ok"}', "stderr": ""})(),
+            type("Completed", (), {"returncode": 0, "stdout": "tests ok", "stderr": ""})(),
+            type("Completed", (), {"returncode": 1, "stdout": '{"all_passed": false}', "stderr": ""})(),
+        ]
+
+        report = build_report(include_smoke=False, include_gpu_acceptance=True)
+
+        self.assertEqual(report["gpu_acceptance"]["returncode"], 1)
+        self.assertEqual(report["gpu_acceptance"]["payload"], {"all_passed": False})
 
 
 if __name__ == "__main__":

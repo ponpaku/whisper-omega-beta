@@ -28,6 +28,7 @@ omega setup align
 omega setup diarize
 omega setup validation
 omega transcribe sample.wav --output-format json --emit-result-json always
+./.venv-system/bin/python scripts/run_acceptance.py
 ```
 
 If you are in an offline or sandboxed environment, package installation may require a local virtual environment plus `--no-build-isolation`.
@@ -46,6 +47,20 @@ Optional extras:
 .venv-system/bin/python -m pip install '.[diarize-nemo]' --no-build-isolation
 .venv-system/bin/python -m pip install '.[validation]' --no-build-isolation
 ```
+
+## Source Documents
+
+Use these documents as the current source of truth:
+
+- Product and acceptance intent: `whisper-omega-plan/requirements/whisper_omega_v05.md`
+- Formal specs: `whisper-omega-plan/specs/appendix_*.md`
+- Canonical local acceptance flow: `docs/VALIDATION_CHECKLIST.md`
+- Current fixed fixture roster and hashes: `docs/VALIDATION_DATASET_MANIFEST.md`
+- Current benchmark and GPU residual-risk snapshot: `docs/BENCHMARK_TEMPLATE.md`
+- Current implementation/release status: `IMPLEMENTATION_TASKS.md`
+- Open and temporary decisions: `DECISIONS.md`
+
+`whisper-omega-plan/タスクリスト_20260322.md` is best treated as a working snapshot, not the long-term source of truth.
 
 For zero-extra-dependency diarization on stereo wav files, run `omega transcribe --require-diarization --diarize-backend channel ...`. This backend assigns `CHANNEL_LEFT` / `CHANNEL_RIGHT` speakers from per-channel energy and is useful when each speaker is isolated to one stereo side.
 For NeMo diarization, install `.[diarize-nemo]` and run `omega transcribe --require-diarization --diarize-backend nemo ...`. You can optionally point `OMEGA_NEMO_CONFIG` at a NeMo diarizer YAML, or set `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` to steer clustering without a custom config.
@@ -102,8 +117,13 @@ Compatibility handling rules are:
 - Real transcription requires the optional `faster-whisper` dependency.
 - Without it, `omega transcribe` returns a machine-readable dependency failure instead of crashing.
 - `omega doctor` now reports known issue codes and recommended actions for missing runtime pieces.
-- `omega doctor` also reports available diarization backends, pyannote readiness, and whether alignment maps and pyannote speaker-hint env vars are configured.
+- `omega doctor` also reports available diarization backends, canonical issue codes, and structured `backend_statuses` for diarization / decode / alignment readiness.
+- `omega doctor` reports whether alignment maps and pyannote speaker-hint env vars are configured, so map-assisted non-latin routing can be checked before runtime.
 - `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
+- `scripts/run_acceptance.py` is the canonical local acceptance entrypoint; it runs `doctor`, full unit tests, ASR smoke, alignment smoke, diarization smoke, and writes `validation-report.json`.
+- `scripts/run_pyannote_acceptance.py` is the environment-bound pyannote acceptance entrypoint; it records the expected `HF_TOKEN_MISSING` case plus the token+hints case, and returns `2` when the environment is blocked by missing runtime prerequisites.
+- `scripts/run_nemo_acceptance.py` is the environment-bound NeMo acceptance entrypoint; it records the expected `CONFIG_INVALID` case plus the hints-based success case, and returns `2` when NeMo prerequisites are missing.
+- `scripts/run_gpu_acceptance.py` is the GPU acceptance entrypoint; it records `device=auto`, `device=cuda`, and `strict-gpu` behavior, and treats `AUDIO_DECODE_FAILURE` as a residual risk rather than a silent fallback.
 - `scripts/run_alignment_smoke.py` runs fixture-backed alignment routing checks for `D1_SHORT_JA` and `D2_SHORT_EN`.
 - `scripts/run_diarization_smoke.py` runs fixture-backed diarization assignment checks for the current D4 mixes across both `pyannote` and `nemo` smoke backends.
 - `docs/VALIDATION_DATASET_CANDIDATES.md` lists Google-first validation dataset candidates.

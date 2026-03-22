@@ -4,6 +4,34 @@
 
 この文書はローカルで回せる確認項目をまとめたもの。正式な受け入れ試験は `whisper-omega-plan/specs/appendix_d_validation_v01.md` を親とする。
 
+## Canonical Acceptance
+
+最短の完成判定コマンドは以下。
+
+- `./.venv-system/bin/python scripts/run_acceptance.py`
+
+このコマンドは以下を順に実行し、結果を `validation-report.json` に集約する。
+
+- `omega doctor --json-output`
+- `python -m unittest discover -s tests -v`
+- `scripts/run_smoke.sh`
+- `scripts/run_alignment_smoke.py`
+- `scripts/run_diarization_smoke.py`
+
+必要に応じて `--skip-smoke` / `--skip-alignment-smoke` / `--skip-diarization-smoke` を使えるが、完成判定では全部入りを標準とする。
+
+## Pyannote Acceptance
+
+`pyannote` の実依存込み確認は通常 acceptance と分けて扱う。
+
+- `./.venv-system/bin/python scripts/run_pyannote_acceptance.py`
+
+期待動作:
+
+- case 1: `HF_TOKEN` なしで `HF_TOKEN_MISSING` を機械可読に返す
+- case 2: `HF_TOKEN` あり + speaker hint 設定で success を狙う
+- 前提不足時は `blocked=true` と `blocked_reasons` を返し、終了コード `2` で止まる
+
 ## 実施済み
 
 - `PYTHONPATH=src python3 -m unittest discover -s tests -v`
@@ -38,12 +66,43 @@
 
 - テストは green
 - `doctor` は Python / platform / `faster-whisper` / `ctranslate2` / `torch` / `torchaudio` / `torchcodec` / `nvidia-smi` / alignment・diarization readiness / decode backend / alignment map 設定 / pyannote speaker hint / recommended actions を返す
+- `doctor --json-output` は `known_issue_codes` に加え `canonical_issue_codes` と `backend_statuses` を返し、diarization / decode / alignment の各 readiness を `installed` / `importable` / `ready` / `issue_code` 単位で確認できる
 - `build_dataset_manifest.py` は dataset file / SHA256 / duration の markdown 行を生成できる
 - `export_google_fleurs_fixtures.py` は `google/fleurs` から D1/D2 候補 fixture をローカル wav に書き出せる
 - `build_long_fixture.py` は既存 fixture から D3_LONG_MIXED 向け long-form wav と recipe JSON を作れる
 - `build_diarization_fixture.py` は D4_DIARIZATION 向けの synthetic mixture と recipe JSON を作れる
 - `build_failure_fixtures.py` は D5_FAILURE_INJECTION 向けの decode failure fixture を作れる
 - `generate_validation_report.py` は doctor / unittest / ASR smoke / alignment smoke / diarization smoke の結果を JSON へまとめられる
+- `run_acceptance.py` はローカル acceptance の標準導線として `validation-report.json` を再生成できる
+- `run_pyannote_acceptance.py` は pyannote 実依存 acceptance を JSON で記録できる
+- `run_nemo_acceptance.py` は NeMo 実依存 acceptance を JSON で記録できる
+- `run_gpu_acceptance.py` は GPU 実機 acceptance を JSON で記録できる
+
+## NeMo Acceptance
+
+`nemo` の実依存込み確認も通常 acceptance と分けて扱う。
+
+- `./.venv-system/bin/python scripts/run_nemo_acceptance.py`
+
+期待動作:
+
+- case 1: 無効な `OMEGA_NEMO_CONFIG` で `CONFIG_INVALID` を返す
+- case 2: `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` 設定で success を狙う
+- 前提不足時は `blocked=true` と `blocked_reasons` を返し、終了コード `2` で止まる
+
+## GPU Acceptance
+
+GPU 実機確認も通常 acceptance と分けて扱う。
+
+- `./.venv-system/bin/python scripts/run_gpu_acceptance.py`
+
+期待動作:
+
+- case 1: `device=auto` で `actual_device=cuda` が選ばれる
+- case 2: `device=cuda` で `GPU_UNAVAILABLE` に落ちず CUDA 経路へ乗る
+- case 3: `runtime_policy=strict-gpu` で CPU へ黙って落ちない
+- `AUDIO_DECODE_FAILURE` は pass 扱いのまま `residual_risks` に記録する
+- GPU 前提不足時は `blocked=true` と `blocked_reasons` を返し、終了コード `2` で止まる
 - `run_alignment_smoke.py` は `fixtures/d2_short_en/manifest.json` と `fixtures/d1_short_ja/manifest.json` を使って alignment routing smoke を返せる
 - `run_diarization_smoke.py` は `fixtures/d4_diarization/*.recipe.json` を使って `pyannote` / `nemo` の diarization assignment smoke を返せる
 - `docs/VALIDATION_DATASET_CANDIDATES.md` は Google-first の dataset 候補を示す
@@ -69,8 +128,9 @@
 - `nemo` diarization failure は `NEMO_MODEL_UNAVAILABLE` / `NEMO_RUNTIME_FAILURE` / `NEMO_OUTPUT_MISSING` / `CONFIG_INVALID` に分類される
 - channel diarization failure は `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` に分類される
 - D1/D2 の実データ fixture は `fixtures/d1_short_ja` / `fixtures/d2_short_en` にローカル export 済み
-- D3 のローカル fixture は `fixtures/d3_long_mixed` に生成できる
-- D4/D5 のローカル fixture は `fixtures/d4_diarization` / `fixtures/d5_failure_injection` に生成できる
+- D3 のローカル fixture は `fixtures/d3_long_mixed/d3_concat_01.wav` / `d3_concat_02.wav` の 2 ケースを固定している
+- D4 のローカル fixture は `fixtures/d4_diarization/d4_mix_01.wav` / `d4_mix_overlap_01.wav` / `d4_mix_3spk_01.wav` の 3 ケースを固定している
+- D5 のローカル fixture は `fixtures/d5_failure_injection` に 6 ケースを固定している
 - D4 は `d4_mix_01.wav` / `d4_mix_overlap_01.wav` / `d4_mix_3spk_01.wav` の 3 ケースを固定している
 - D3 は `d3_concat_01.wav` / `d3_concat_02.wav` の 2 ケースを固定している
 - D5 manifest には `OUTPUT_PERMISSION_DENIED` と `DEPENDENCY_MISSING` の scenario fixture も含めている

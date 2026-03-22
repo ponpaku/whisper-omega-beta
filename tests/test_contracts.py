@@ -140,9 +140,17 @@ class ContractTests(unittest.TestCase):
             "cache_dir_writable",
             "detected_device",
             "known_issue_codes",
+            "canonical_issue_codes",
             "recommended_actions",
+            "backend_statuses",
         ):
             self.assertIn(key, report)
+
+        self.assertIn("diarization", report["backend_statuses"])
+        self.assertIn("decode", report["backend_statuses"])
+        self.assertIn("alignment", report["backend_statuses"])
+        self.assertIn("GPU_UNAVAILABLE", report["canonical_issue_codes"])
+        self.assertIn("HF_TOKEN_MISSING", report["canonical_issue_codes"])
 
     def test_doctor_prefers_torchaudio_for_diarization_decode(self) -> None:
         availability = {

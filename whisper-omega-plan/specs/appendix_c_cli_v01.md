@@ -104,6 +104,29 @@ omega transcribe INPUT [OPTIONS]
 - `31`: configuration failure
 - `40`: usage / argument error
 
+## 10.1 `omega doctor --json-output` 契約
+- `known_issue_codes`: 現環境で観測された issue code の一覧
+- `canonical_issue_codes`: `doctor` / `transcribe` / validation report で使う canonical code 語彙一覧
+- `backend_statuses.diarization.{channel,nemo,pyannote}`:
+  - `installed`
+  - `importable`
+  - `ready`
+  - `issue_code`
+  - `recommended_actions`
+- `backend_statuses.decode.{torchaudio,ffmpeg_torchcodec}`:
+  - `installed`
+  - `importable`
+  - `ready`
+  - `issue_code`
+  - `recommended_actions`
+- `backend_statuses.alignment.{native_latin,ja_kana,ja_reading_map,text_map,romanizer}`:
+  - `installed`
+  - `importable`
+  - `ready`
+  - `issue_code`
+  - `recommended_actions`
+- `alignment_language_strategy` は token 解決順の要約文字列を返す
+
 ## 11. 互換 CLI フロント範囲
 MVP で互換対象とする WhisperX 主要オプション:
 - `--model`
