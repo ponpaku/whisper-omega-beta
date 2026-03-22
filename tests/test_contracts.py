@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 from whisper_omega.asr.base import ASRBackend, BackendTranscription
 from whisper_omega.runtime.models import Metadata, Segment, Speaker, TranscriptionResult, Word
 from whisper_omega.runtime.policy import effective_device
-from whisper_omega.runtime.service import DoctorReport
+from whisper_omega.runtime.service import DoctorReport, _safe_find_spec
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -200,6 +200,9 @@ class ContractTests(unittest.TestCase):
         self.assertIn("OMEGA_ALIGNMENT_JA_READING_MAP", report["alignment_language_strategy"])
         self.assertIn("OMEGA_ALIGNMENT_ROMANIZER", report["alignment_language_strategy"])
         self.assertIn("unsupported", report["alignment_language_strategy"])
+
+    def test_safe_find_spec_returns_none_for_missing_dotted_module(self) -> None:
+        self.assertIsNone(_safe_find_spec("definitely_missing_pkg.submodule"))
 
 
 if __name__ == "__main__":

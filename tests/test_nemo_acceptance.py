@@ -80,6 +80,33 @@ class NemoAcceptanceTests(unittest.TestCase):
         self.assertFalse(report["all_passed"])
         self.assertEqual(report["cases"][1]["error_code"], "NEMO_MODEL_UNAVAILABLE")
 
+    def test_report_forces_cpu_only_env_for_nemo_cases(self) -> None:
+        doctor = {
+            "faster_whisper_available": True,
+            "backend_statuses": {
+                "diarization": {"nemo": {"installed": True}},
+            },
+        }
+        observed_envs: list[tuple[str | None, str | None]] = []
+
+        def fake_transcribe_file(**kwargs):
+            observed_envs.append(
+                (
+                    run_nemo_acceptance.os.environ.get("CUDA_VISIBLE_DEVICES"),
+                    run_nemo_acceptance.os.environ.get("OMEGA_DEVICE"),
+                )
+            )
+            if len(observed_envs) == 1:
+                return SimpleNamespace(status="failure", error_code="CONFIG_INVALID", error_category="configuration", speakers=[])
+            return SimpleNamespace(status="success", error_code=None, error_category=None, speakers=[object()])
+
+        with patch.object(run_nemo_acceptance.DoctorReport, "collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
+            with patch.object(run_nemo_acceptance, "transcribe_file", side_effect=fake_transcribe_file):
+                report = build_nemo_acceptance_report()
+
+        self.assertTrue(report["all_passed"])
+        self.assertEqual(observed_envs, [("", "cpu"), ("", "cpu")])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -235,7 +235,11 @@ class UnavailablePyannoteBackend(DiarizationBackend):
     name = "pyannote"
 
     def capability(self) -> tuple[bool, str | None]:
-        if importlib.util.find_spec("pyannote.audio") is None:
+        try:
+            spec = importlib.util.find_spec("pyannote.audio")
+        except ModuleNotFoundError:
+            spec = None
+        if spec is None:
             return (False, "DIARIZATION_BACKEND_UNAVAILABLE")
         if not os.environ.get("HF_TOKEN"):
             return (False, "HF_TOKEN_MISSING")

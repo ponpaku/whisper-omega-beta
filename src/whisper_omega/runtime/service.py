@@ -661,7 +661,21 @@ class DoctorReport:
 
 
 def _module_available(module_name: str) -> bool:
-    return importlib.util.find_spec(module_name) is not None
+    return _safe_find_spec(module_name) is not None
+
+
+def _safe_find_spec(module_name: str):
+    top_level, _, _ = module_name.partition(".")
+    if top_level and module_name != top_level:
+        try:
+            if importlib.util.find_spec(top_level) is None:
+                return None
+        except ModuleNotFoundError:
+            return None
+    try:
+        return importlib.util.find_spec(module_name)
+    except ModuleNotFoundError:
+        return None
 
 
 def _module_importable(module_name: str, timeout_seconds: float = 2.0) -> bool:

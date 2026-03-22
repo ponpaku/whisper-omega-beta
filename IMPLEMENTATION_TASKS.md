@@ -27,7 +27,7 @@
   - GPU 実機では decode/backend 条件により `AUDIO_DECODE_FAILURE` が残る場合がある
   - non-latin alignment は一般解ではなく map / romanizer 補助を前提にする
   - pyannote diarization の本番安定性は `HF_TOKEN` と依存スタックに左右される
-  - nemo diarization の本番 acceptance は依存導入済み環境での追加確認が必要
+  - nemo diarization は acceptance success まで確認済みだが、GPU/driver 条件により runtime 差分が出る可能性は残る
 
 ## 完成条件
 

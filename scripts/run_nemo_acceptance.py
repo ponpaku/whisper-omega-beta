@@ -146,6 +146,9 @@ def build_nemo_acceptance_report() -> dict:
                 "OMEGA_NEMO_CONFIG": str(Path(tmpdir) / "missing-config.yaml"),
                 "OMEGA_NEMO_NUM_SPEAKERS": None,
                 "OMEGA_NEMO_MAX_SPEAKERS": None,
+                # Keep NeMo acceptance on a deterministic CPU-only path.
+                "CUDA_VISIBLE_DEVICES": "",
+                "OMEGA_DEVICE": "cpu",
             }
         ):
             invalid_config_result = transcribe_file(**base_kwargs)
@@ -162,6 +165,9 @@ def build_nemo_acceptance_report() -> dict:
                 "OMEGA_NEMO_CONFIG": None,
                 "OMEGA_NEMO_NUM_SPEAKERS": "1",
                 "OMEGA_NEMO_MAX_SPEAKERS": "2",
+                # Keep NeMo acceptance on a deterministic CPU-only path.
+                "CUDA_VISIBLE_DEVICES": "",
+                "OMEGA_DEVICE": "cpu",
             }
         ):
             hints_result = transcribe_file(**base_kwargs)
