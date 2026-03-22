@@ -12,8 +12,11 @@ class DiarizationSmokeTests(unittest.TestCase):
         self.assertTrue(report["all_passed"])
         self.assertEqual(len(report["checks"]), 2)
         for check in report["checks"]:
-            self.assertEqual(len(check["speaker_ids"]), check["track_count"])
-            self.assertEqual(check["speaker_ids"], check["assigned_speakers"])
+            self.assertEqual(len(check["backends"]), 2)
+            self.assertEqual({item["backend"] for item in check["backends"]}, {"pyannote", "nemo"})
+            for backend_check in check["backends"]:
+                self.assertEqual(len(backend_check["speaker_ids"]), check["track_count"])
+                self.assertEqual(backend_check["speaker_ids"], backend_check["assigned_speakers"])
 
 
 if __name__ == "__main__":

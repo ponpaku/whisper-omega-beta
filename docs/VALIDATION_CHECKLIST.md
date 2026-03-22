@@ -45,7 +45,7 @@
 - `build_failure_fixtures.py` は D5_FAILURE_INJECTION 向けの decode failure fixture を作れる
 - `generate_validation_report.py` は doctor / unittest / ASR smoke / alignment smoke / diarization smoke の結果を JSON へまとめられる
 - `run_alignment_smoke.py` は `fixtures/d2_short_en/manifest.json` と `fixtures/d1_short_ja/manifest.json` を使って alignment routing smoke を返せる
-- `run_diarization_smoke.py` は `fixtures/d4_diarization/*.recipe.json` を使って diarization assignment smoke を返せる
+- `run_diarization_smoke.py` は `fixtures/d4_diarization/*.recipe.json` を使って `pyannote` / `nemo` の diarization assignment smoke を返せる
 - `docs/VALIDATION_DATASET_CANDIDATES.md` は Google-first の dataset 候補を示す
 - `docs/VALIDATION_DATASET_MANIFEST.md` は D1/D2 の実際の local fixture hash / duration を固定する
 - `setup core` は documented path を返す
