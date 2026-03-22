@@ -319,6 +319,7 @@ class UnavailablePyannoteBackend(DiarizationBackend):
                 pipeline.to(torch_device)
             diarization_input = _load_audio_for_pyannote(audio_path)
             diarization = pipeline(diarization_input, **pipeline_kwargs)
+            speaker_turns = list(_iter_speaker_turns(diarization))
         except Exception as exc:
             code, category = _classify_pyannote_exception(exc)
             return DiarizationOutcome(
@@ -336,7 +337,6 @@ class UnavailablePyannoteBackend(DiarizationBackend):
                 ],
             )
 
-        speaker_turns = list(_iter_speaker_turns(diarization))
         if not speaker_turns:
             return DiarizationOutcome(segments=segments, words=words, speakers=[])
 
@@ -354,8 +354,20 @@ class UnavailablePyannoteBackend(DiarizationBackend):
 
 
 def _iter_speaker_turns(diarization) -> Iterable[tuple[float, float, str]]:
-    for turn, _, speaker in diarization.itertracks(yield_label=True):
+    annotation = _resolve_pyannote_annotation(diarization)
+    for turn, _, speaker in annotation.itertracks(yield_label=True):
         yield (float(turn.start), float(turn.end), str(speaker))
+
+
+def _resolve_pyannote_annotation(diarization):
+    if hasattr(diarization, "itertracks"):
+        return diarization
+
+    annotation = getattr(diarization, "speaker_diarization", None)
+    if annotation is not None and hasattr(annotation, "itertracks"):
+        return annotation
+
+    raise TypeError("pyannote diarization output does not expose speaker turns")
 
 
 def _load_audio_for_pyannote(audio_path: str):

@@ -16,9 +16,9 @@
       "torchcodec_importable": false,
       "torch_cuda_available": true,
       "nvidia_smi_available": true,
-      "ffmpeg_available": false,
+      "ffmpeg_available": true,
       "nvidia_summary": "NVIDIA GeForce RTX 3090, 595.79",
-      "hf_token_configured": false,
+      "hf_token_configured": true,
       "diarization_backends": [
         "none",
         "channel",
@@ -33,8 +33,8 @@
       "diarization_issue_code": null,
       "nemo_ready": false,
       "nemo_issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
-      "pyannote_ready": false,
-      "pyannote_issue_code": "HF_TOKEN_MISSING",
+      "pyannote_ready": true,
+      "pyannote_issue_code": null,
       "diarization_decode_ready": true,
       "diarization_decode_backend": "torchaudio",
       "alignment_ready": true,
@@ -51,8 +51,7 @@
       "cache_dir_writable": true,
       "detected_device": "cuda",
       "known_issue_codes": [
-        "DIARIZATION_BACKEND_UNAVAILABLE",
-        "HF_TOKEN_MISSING"
+        "DIARIZATION_BACKEND_UNAVAILABLE"
       ],
       "canonical_issue_codes": [
         "GPU_UNAVAILABLE",
@@ -82,8 +81,7 @@
         "NEMO_OUTPUT_MISSING"
       ],
       "recommended_actions": [
-        "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.",
-        "Set `HF_TOKEN` before running pyannote diarization."
+        "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
       ],
       "backend_statuses": {
         "diarization": {
@@ -106,11 +104,9 @@
           "pyannote": {
             "installed": true,
             "importable": true,
-            "ready": false,
-            "issue_code": "HF_TOKEN_MISSING",
-            "recommended_actions": [
-              "Set `HF_TOKEN` before running pyannote diarization."
-            ]
+            "ready": true,
+            "issue_code": null,
+            "recommended_actions": []
           }
         },
         "decode": {
@@ -122,7 +118,7 @@
             "recommended_actions": []
           },
           "ffmpeg_torchcodec": {
-            "installed": false,
+            "installed": true,
             "importable": false,
             "ready": false,
             "issue_code": "DIARIZATION_DECODE_UNAVAILABLE",
@@ -172,132 +168,625 @@
         }
       }
     },
-    "stdout": "{\n  \"python_version\": \"3.12.3\",\n  \"platform\": \"Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39\",\n  \"faster_whisper_available\": true,\n  \"ctranslate2_available\": true,\n  \"torch_available\": true,\n  \"torchaudio_available\": true,\n  \"torchcodec_available\": true,\n  \"torchcodec_importable\": false,\n  \"torch_cuda_available\": true,\n  \"nvidia_smi_available\": true,\n  \"ffmpeg_available\": false,\n  \"nvidia_summary\": \"NVIDIA GeForce RTX 3090, 595.79\",\n  \"hf_token_configured\": false,\n  \"diarization_backends\": [\n    \"none\",\n    \"channel\",\n    \"nemo\",\n    \"pyannote\"\n  ],\n  \"diarization_backend_available\": true,\n  \"nemo_backend_available\": false,\n  \"pyannote_backend_available\": true,\n  \"alignment_backend_available\": true,\n  \"diarization_ready\": true,\n  \"diarization_issue_code\": null,\n  \"nemo_ready\": false,\n  \"nemo_issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n  \"pyannote_ready\": false,\n  \"pyannote_issue_code\": \"HF_TOKEN_MISSING\",\n  \"diarization_decode_ready\": true,\n  \"diarization_decode_backend\": \"torchaudio\",\n  \"alignment_ready\": true,\n  \"alignment_issue_code\": null,\n  \"alignment_romanizer_configured\": false,\n  \"alignment_text_map_configured\": false,\n  \"alignment_ja_reading_map_configured\": false,\n  \"alignment_map_issue_code\": null,\n  \"alignment_language_strategy\": \"torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported\",\n  \"pyannote_num_speakers\": null,\n  \"pyannote_min_speakers\": null,\n  \"pyannote_max_speakers\": null,\n  \"cache_dir\": \"/home/takanobu/.cache\",\n  \"cache_dir_writable\": true,\n  \"detected_device\": \"cuda\",\n  \"known_issue_codes\": [\n    \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"HF_TOKEN_MISSING\"\n  ],\n  \"canonical_issue_codes\": [\n    \"GPU_UNAVAILABLE\",\n    \"DEPENDENCY_MISSING\",\n    \"OUTPUT_PERMISSION_DENIED\",\n    \"AUDIO_DECODE_FAILURE\",\n    \"INTERNAL_ERROR\",\n    \"CONFIG_INVALID\",\n    \"ALIGNMENT_BACKEND_UNAVAILABLE\",\n    \"ALIGNMENT_MODEL_UNAVAILABLE\",\n    \"ALIGNMENT_LANGUAGE_UNSUPPORTED\",\n    \"ALIGNMENT_TEXT_UNAVAILABLE\",\n    \"ALIGNMENT_TEXT_UNSUPPORTED\",\n    \"ALIGNMENT_RUNTIME_FAILURE\",\n    \"ALIGNMENT_TEXT_MAP_INVALID\",\n    \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"DIARIZATION_DECODE_UNAVAILABLE\",\n    \"HF_TOKEN_MISSING\",\n    \"DIARIZATION_AUTH_FAILURE\",\n    \"DIARIZATION_MODEL_UNAVAILABLE\",\n    \"DIARIZATION_DECODE_FAILURE\",\n    \"DIARIZATION_CHANNELS_UNAVAILABLE\",\n    \"DIARIZATION_CHANNEL_AMBIGUOUS\",\n    \"DIARIZATION_AUDIO_UNSUPPORTED\",\n    \"NEMO_MODEL_UNAVAILABLE\",\n    \"NEMO_RUNTIME_FAILURE\",\n    \"NEMO_OUTPUT_MISSING\"\n  ],\n  \"recommended_actions\": [\n    \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\",\n    \"Set `HF_TOKEN` before running pyannote diarization.\"\n  ],\n  \"backend_statuses\": {\n    \"diarization\": {\n      \"channel\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"nemo\": {\n        \"installed\": false,\n        \"importable\": false,\n        \"ready\": false,\n        \"issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n        \"recommended_actions\": [\n          \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n        ]\n      },\n      \"pyannote\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": \"HF_TOKEN_MISSING\",\n        \"recommended_actions\": [\n          \"Set `HF_TOKEN` before running pyannote diarization.\"\n        ]\n      }\n    },\n    \"decode\": {\n      \"torchaudio\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ffmpeg_torchcodec\": {\n        \"installed\": false,\n        \"importable\": false,\n        \"ready\": false,\n        \"issue_code\": \"DIARIZATION_DECODE_UNAVAILABLE\",\n        \"recommended_actions\": [\n          \"Install system FFmpeg and verify `torchcodec` can import successfully.\"\n        ]\n      }\n    },\n    \"alignment\": {\n      \"native_latin\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ja_kana\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ja_reading_map\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"text_map\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"romanizer\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": [\n          \"Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages.\"\n        ]\n      }\n    }\n  }\n}\n",
+    "stdout": "{\n  \"python_version\": \"3.12.3\",\n  \"platform\": \"Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39\",\n  \"faster_whisper_available\": true,\n  \"ctranslate2_available\": true,\n  \"torch_available\": true,\n  \"torchaudio_available\": true,\n  \"torchcodec_available\": true,\n  \"torchcodec_importable\": false,\n  \"torch_cuda_available\": true,\n  \"nvidia_smi_available\": true,\n  \"ffmpeg_available\": true,\n  \"nvidia_summary\": \"NVIDIA GeForce RTX 3090, 595.79\",\n  \"hf_token_configured\": true,\n  \"diarization_backends\": [\n    \"none\",\n    \"channel\",\n    \"nemo\",\n    \"pyannote\"\n  ],\n  \"diarization_backend_available\": true,\n  \"nemo_backend_available\": false,\n  \"pyannote_backend_available\": true,\n  \"alignment_backend_available\": true,\n  \"diarization_ready\": true,\n  \"diarization_issue_code\": null,\n  \"nemo_ready\": false,\n  \"nemo_issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n  \"pyannote_ready\": true,\n  \"pyannote_issue_code\": null,\n  \"diarization_decode_ready\": true,\n  \"diarization_decode_backend\": \"torchaudio\",\n  \"alignment_ready\": true,\n  \"alignment_issue_code\": null,\n  \"alignment_romanizer_configured\": false,\n  \"alignment_text_map_configured\": false,\n  \"alignment_ja_reading_map_configured\": false,\n  \"alignment_map_issue_code\": null,\n  \"alignment_language_strategy\": \"torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported\",\n  \"pyannote_num_speakers\": null,\n  \"pyannote_min_speakers\": null,\n  \"pyannote_max_speakers\": null,\n  \"cache_dir\": \"/home/takanobu/.cache\",\n  \"cache_dir_writable\": true,\n  \"detected_device\": \"cuda\",\n  \"known_issue_codes\": [\n    \"DIARIZATION_BACKEND_UNAVAILABLE\"\n  ],\n  \"canonical_issue_codes\": [\n    \"GPU_UNAVAILABLE\",\n    \"DEPENDENCY_MISSING\",\n    \"OUTPUT_PERMISSION_DENIED\",\n    \"AUDIO_DECODE_FAILURE\",\n    \"INTERNAL_ERROR\",\n    \"CONFIG_INVALID\",\n    \"ALIGNMENT_BACKEND_UNAVAILABLE\",\n    \"ALIGNMENT_MODEL_UNAVAILABLE\",\n    \"ALIGNMENT_LANGUAGE_UNSUPPORTED\",\n    \"ALIGNMENT_TEXT_UNAVAILABLE\",\n    \"ALIGNMENT_TEXT_UNSUPPORTED\",\n    \"ALIGNMENT_RUNTIME_FAILURE\",\n    \"ALIGNMENT_TEXT_MAP_INVALID\",\n    \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"DIARIZATION_DECODE_UNAVAILABLE\",\n    \"HF_TOKEN_MISSING\",\n    \"DIARIZATION_AUTH_FAILURE\",\n    \"DIARIZATION_MODEL_UNAVAILABLE\",\n    \"DIARIZATION_DECODE_FAILURE\",\n    \"DIARIZATION_CHANNELS_UNAVAILABLE\",\n    \"DIARIZATION_CHANNEL_AMBIGUOUS\",\n    \"DIARIZATION_AUDIO_UNSUPPORTED\",\n    \"NEMO_MODEL_UNAVAILABLE\",\n    \"NEMO_RUNTIME_FAILURE\",\n    \"NEMO_OUTPUT_MISSING\"\n  ],\n  \"recommended_actions\": [\n    \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n  ],\n  \"backend_statuses\": {\n    \"diarization\": {\n      \"channel\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"nemo\": {\n        \"installed\": false,\n        \"importable\": false,\n        \"ready\": false,\n        \"issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n        \"recommended_actions\": [\n          \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n        ]\n      },\n      \"pyannote\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      }\n    },\n    \"decode\": {\n      \"torchaudio\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ffmpeg_torchcodec\": {\n        \"installed\": true,\n        \"importable\": false,\n        \"ready\": false,\n        \"issue_code\": \"DIARIZATION_DECODE_UNAVAILABLE\",\n        \"recommended_actions\": [\n          \"Install system FFmpeg and verify `torchcodec` can import successfully.\"\n        ]\n      }\n    },\n    \"alignment\": {\n      \"native_latin\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ja_kana\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ja_reading_map\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"text_map\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"romanizer\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": [\n          \"Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages.\"\n        ]\n      }\n    }\n  }\n}\n",
     "stderr": ""
   },
   "tests": {
     "returncode": 0,
     "stdout": "",
-    "stderr": "test_acceptance_failures_collects_nonzero_and_failed_payloads (test_acceptance.AcceptanceTests.test_acceptance_failures_collects_nonzero_and_failed_payloads) ... ok\ntest_acceptance_failures_empty_when_all_selected_steps_pass (test_acceptance.AcceptanceTests.test_acceptance_failures_empty_when_all_selected_steps_pass) ... ok\ntest_wav2vec2_backend_can_use_external_romanizer (test_align.AlignTests.test_wav2vec2_backend_can_use_external_romanizer) ... ok\ntest_wav2vec2_backend_can_use_generic_text_map_for_non_latin_word (test_align.AlignTests.test_wav2vec2_backend_can_use_generic_text_map_for_non_latin_word) ... ok\ntest_wav2vec2_backend_can_use_japanese_reading_map_for_kanji (test_align.AlignTests.test_wav2vec2_backend_can_use_japanese_reading_map_for_kanji) ... ok\ntest_wav2vec2_backend_realigns_word_times (test_align.AlignTests.test_wav2vec2_backend_realigns_word_times) ... ok\ntest_wav2vec2_backend_rejects_unsupported_ja_kanji_text (test_align.AlignTests.test_wav2vec2_backend_rejects_unsupported_ja_kanji_text) ... ok\ntest_wav2vec2_backend_rejects_unsupported_text (test_align.AlignTests.test_wav2vec2_backend_rejects_unsupported_text) ... ok\ntest_wav2vec2_backend_supports_kana_japanese_without_external_romanizer (test_align.AlignTests.test_wav2vec2_backend_supports_kana_japanese_without_external_romanizer) ... ok\ntest_build_alignment_smoke_report_uses_fixture_manifests (test_alignment_smoke.AlignmentSmokeTests.test_build_alignment_smoke_report_uses_fixture_manifests) ... ok\ntest_build_stub_map_initializes_empty_values (test_alignment_text_map.AlignmentTextMapTests.test_build_stub_map_initializes_empty_values) ... ok\ntest_extract_non_latin_tokens_finds_unique_terms (test_alignment_text_map.AlignmentTextMapTests.test_extract_non_latin_tokens_finds_unique_terms) ... ok\ntest_package_exports_public_api (test_api.ApiTests.test_package_exports_public_api) ... ok\ntest_transcribe_file_returns_failure_result_without_backend_dependency (test_api.ApiTests.test_transcribe_file_returns_failure_result_without_backend_dependency) ... ok\ntest_run_case_collects_status_and_error_codes (test_benchmark_smoke.BenchmarkSmokeTests.test_run_case_collects_status_and_error_codes) ... ok\ntest_emit_result_json_on_failure_emits_failure_json (test_cli.CliTests.test_emit_result_json_on_failure_emits_failure_json) ... ok\ntest_emit_result_json_on_failure_only_suppresses_success_json (test_cli.CliTests.test_emit_result_json_on_failure_only_suppresses_success_json) ... ok\ntest_failure_json_written_only_with_flag (test_cli.CliTests.test_failure_json_written_only_with_flag) ... ok\ntest_output_file_writes_srt (test_cli.CliTests.test_output_file_writes_srt) ... ok\ntest_setup_align_lists_alignment_steps (test_cli.CliTests.test_setup_align_lists_alignment_steps) ... ok\ntest_setup_diarize_lists_hf_token_step (test_cli.CliTests.test_setup_diarize_lists_hf_token_step) ... ok\ntest_setup_validation_lists_manifest_steps (test_cli.CliTests.test_setup_validation_lists_manifest_steps) ... ok\ntest_strict_alignment_succeeds_with_word_timestamps (test_cli.CliTests.test_strict_alignment_succeeds_with_word_timestamps) ... ok\ntest_transcribe_accepts_channel_diarization_backend (test_cli.CliTests.test_transcribe_accepts_channel_diarization_backend) ... ok\ntest_transcribe_accepts_nemo_diarization_backend (test_cli.CliTests.test_transcribe_accepts_nemo_diarization_backend) ... ok\ntest_transcribe_emits_json_and_exit_zero (test_cli.CliTests.test_transcribe_emits_json_and_exit_zero) ... ok\ntest_usage_error_returns_40 (test_cli.CliTests.test_usage_error_returns_40) ... ok\ntest_whisperx_align_model_requests_alignment (test_cli.CliTests.test_whisperx_align_model_requests_alignment) ... ok\ntest_whisperx_frontend_maps_legacy_flags (test_cli.CliTests.test_whisperx_frontend_maps_legacy_flags) ... ok\ntest_whisperx_hf_token_sets_environment_for_backend (test_cli.CliTests.test_whisperx_hf_token_sets_environment_for_backend) ... ok\ntest_whisperx_highlight_words_emits_partial_compatibility_warning (test_cli.CliTests.test_whisperx_highlight_words_emits_partial_compatibility_warning) ... ok\ntest_cli_matrix_cases (test_compatibility_matrix.CompatibilityMatrixTests.test_cli_matrix_cases) ... ok\ntest_exit_matrix_cases (test_compatibility_matrix.CompatibilityMatrixTests.test_exit_matrix_cases) ... ok\ntest_json_matrix_cases (test_compatibility_matrix.CompatibilityMatrixTests.test_json_matrix_cases) ... ok\ntest_whisperx_diarize_stays_on_pyannote_backend (test_compatibility_matrix.CompatibilityMatrixTests.test_whisperx_diarize_stays_on_pyannote_backend) ... ok\ntest_doctor_prefers_torchaudio_for_diarization_decode (test_contracts.ContractTests.test_doctor_prefers_torchaudio_for_diarization_decode) ... ok\ntest_doctor_report_includes_extended_fields (test_contracts.ContractTests.test_doctor_report_includes_extended_fields) ... ok\ntest_doctor_reports_alignment_maps_and_speaker_hints (test_contracts.ContractTests.test_doctor_reports_alignment_maps_and_speaker_hints) ... ok\ntest_doctor_reports_alignment_strategy_summary (test_contracts.ContractTests.test_doctor_reports_alignment_strategy_summary) ... ok\ntest_effective_device_prefers_cuda_when_available (test_contracts.ContractTests.test_effective_device_prefers_cuda_when_available) ... ok\ntest_result_schema_accepts_failure_payload (test_contracts.ContractTests.test_result_schema_accepts_failure_payload) ... ok\ntest_result_schema_accepts_representative_json_fixtures (test_contracts.ContractTests.test_result_schema_accepts_representative_json_fixtures) ... ok\ntest_result_schema_accepts_success_payload (test_contracts.ContractTests.test_result_schema_accepts_success_payload) ... ok\ntest_build_diarization_smoke_report_uses_d4_fixtures (test_diarization_smoke.DiarizationSmokeTests.test_build_diarization_smoke_report_uses_d4_fixtures) ... ok\ntest_channel_backend_assigns_left_and_right_speakers (test_diarize.DiarizeTests.test_channel_backend_assigns_left_and_right_speakers) ... ok\ntest_channel_backend_rejects_mono_audio (test_diarize.DiarizeTests.test_channel_backend_rejects_mono_audio) ... ok\ntest_decode_error_is_runtime_failure (test_diarize.DiarizeTests.test_decode_error_is_runtime_failure) ... ok\ntest_diarize_passes_speaker_hints_to_pipeline (test_diarize.DiarizeTests.test_diarize_passes_speaker_hints_to_pipeline) ... ok\ntest_diarize_prefers_in_memory_waveform_when_torchaudio_is_available (test_diarize.DiarizeTests.test_diarize_prefers_in_memory_waveform_when_torchaudio_is_available) ... ok\ntest_invalid_speaker_hint_is_configuration_error (test_diarize.DiarizeTests.test_invalid_speaker_hint_is_configuration_error) ... ok\ntest_invalid_token_is_auth_failure (test_diarize.DiarizeTests.test_invalid_token_is_auth_failure) ... ok\ntest_missing_model_is_model_unavailable (test_diarize.DiarizeTests.test_missing_model_is_model_unavailable) ... ok\ntest_missing_token_is_configuration_error (test_diarize.DiarizeTests.test_missing_token_is_configuration_error) ... ok\ntest_nemo_backend_assigns_speakers_from_rttm (test_diarize.DiarizeTests.test_nemo_backend_assigns_speakers_from_rttm) ... ok\ntest_nemo_backend_reports_missing_output (test_diarize.DiarizeTests.test_nemo_backend_reports_missing_output) ... ok\ntest_overlap_fixture_assigns_best_overlap_speaker (test_diarize_contracts.DiarizeContractTests.test_overlap_fixture_assigns_best_overlap_speaker) ... ok\ntest_build_failure_fixtures_creates_expected_cases (test_fixture_builders.FixtureBuilderTests.test_build_failure_fixtures_creates_expected_cases) ... ok\ntest_build_mixture_writes_output_and_recipe (test_fixture_builders.FixtureBuilderTests.test_build_mixture_writes_output_and_recipe) ... ok\ntest_build_multispeaker_mixture_supports_three_speakers (test_fixture_builders.FixtureBuilderTests.test_build_multispeaker_mixture_supports_three_speakers) ... ok\ntest_concatenate_wavs_writes_recipe (test_fixture_builders.FixtureBuilderTests.test_concatenate_wavs_writes_recipe) ... ok\ntest_dataset_config_returns_known_google_fixture (test_google_fleurs_export.GoogleFleursExportTests.test_dataset_config_returns_known_google_fixture) ... ok\ntest_export_fixture_falls_back_to_repo_archive (test_google_fleurs_export.GoogleFleursExportTests.test_export_fixture_falls_back_to_repo_archive) ... ok\ntest_float_to_pcm16_clips_samples (test_google_fleurs_export.GoogleFleursExportTests.test_float_to_pcm16_clips_samples) ... ok\ntest_parse_repo_tsv_reads_transcription_rows (test_google_fleurs_export.GoogleFleursExportTests.test_parse_repo_tsv_reads_transcription_rows) ... ok\ntest_repo_asset_url_builds_huggingface_path (test_google_fleurs_export.GoogleFleursExportTests.test_repo_asset_url_builds_huggingface_path) ... ok\ntest_to_mono_samples_handles_stereo_lists (test_google_fleurs_export.GoogleFleursExportTests.test_to_mono_samples_handles_stereo_lists) ... ok\ntest_report_blocks_when_cuda_unavailable (test_gpu_acceptance.GpuAcceptanceTests.test_report_blocks_when_cuda_unavailable) ... ok\ntest_report_passes_when_cuda_cases_use_gpu (test_gpu_acceptance.GpuAcceptanceTests.test_report_passes_when_cuda_cases_use_gpu) ... ok\ntest_report_records_decode_failure_as_residual_risk (test_gpu_acceptance.GpuAcceptanceTests.test_report_records_decode_failure_as_residual_risk) ... ok\ntest_build_stub_map_initializes_empty_readings (test_ja_reading_map.JapaneseReadingMapTests.test_build_stub_map_initializes_empty_readings) ... ok\ntest_extract_kanji_tokens_finds_unique_terms (test_ja_reading_map.JapaneseReadingMapTests.test_extract_kanji_tokens_finds_unique_terms) ... ok\ntest_duplicate_speaker_ids_are_rejected (test_models.ModelTests.test_duplicate_speaker_ids_are_rejected) ... ok\ntest_rounding_contract (test_models.ModelTests.test_rounding_contract) ... ok\ntest_segment_speaker_must_exist_in_speakers (test_models.ModelTests.test_segment_speaker_must_exist_in_speakers) ... ok\ntest_success_requires_no_errors (test_models.ModelTests.test_success_requires_no_errors) ... ok\ntest_word_speaker_must_exist_in_speakers (test_models.ModelTests.test_word_speaker_must_exist_in_speakers) ... ok\ntest_report_blocks_when_nemo_is_missing (test_nemo_acceptance.NemoAcceptanceTests.test_report_blocks_when_nemo_is_missing) ... ok\ntest_report_fails_when_success_case_does_not_succeed (test_nemo_acceptance.NemoAcceptanceTests.test_report_fails_when_success_case_does_not_succeed) ... ok\ntest_report_passes_when_invalid_config_and_success_cases_match (test_nemo_acceptance.NemoAcceptanceTests.test_report_passes_when_invalid_config_and_success_cases_match) ... ok\ntest_report_blocks_when_core_prerequisites_missing (test_pyannote_acceptance.PyannoteAcceptanceTests.test_report_blocks_when_core_prerequisites_missing) ... ok\ntest_report_passes_when_missing_token_case_and_success_case_match_expectations (test_pyannote_acceptance.PyannoteAcceptanceTests.test_report_passes_when_missing_token_case_and_success_case_match_expectations) ... ok\ntest_report_records_missing_token_case_and_blocks_token_case_without_token (test_pyannote_acceptance.PyannoteAcceptanceTests.test_report_records_missing_token_case_and_blocks_token_case_without_token) ... ok\ntest_permissive_alignment_failure_records_alignment_metadata (test_service.ServiceTests.test_permissive_alignment_failure_records_alignment_metadata) ... ok\ntest_permissive_optional_failures_become_degraded (test_service.ServiceTests.test_permissive_optional_failures_become_degraded) ... ok\ntest_strict_alignment_succeeds_with_existing_words (test_service.ServiceTests.test_strict_alignment_succeeds_with_existing_words) ... ok\ntest_strict_gpu_with_auto_fails_when_cuda_unavailable (test_service.ServiceTests.test_strict_gpu_with_auto_fails_when_cuda_unavailable) ... ok\ntest_build_report_can_include_alignment_smoke (test_validation_report.ValidationReportTests.test_build_report_can_include_alignment_smoke) ... ok\ntest_build_report_can_include_diarization_smoke (test_validation_report.ValidationReportTests.test_build_report_can_include_diarization_smoke) ... ok\ntest_build_report_can_include_gpu_acceptance (test_validation_report.ValidationReportTests.test_build_report_can_include_gpu_acceptance) ... ok\ntest_build_report_can_include_nemo_acceptance (test_validation_report.ValidationReportTests.test_build_report_can_include_nemo_acceptance) ... ok\ntest_build_report_can_include_pyannote_acceptance (test_validation_report.ValidationReportTests.test_build_report_can_include_pyannote_acceptance) ... ok\ntest_build_report_can_include_smoke (test_validation_report.ValidationReportTests.test_build_report_can_include_smoke) ... ok\ntest_build_report_collects_doctor_and_tests (test_validation_report.ValidationReportTests.test_build_report_collects_doctor_and_tests) ... ok\ntest_build_markdown_emits_manifest_row (test_validation_tools.ValidationToolTests.test_build_markdown_emits_manifest_row) ... ok\ntest_build_markdown_uses_manifest_and_recipe_metadata (test_validation_tools.ValidationToolTests.test_build_markdown_uses_manifest_and_recipe_metadata) ... ok\ntest_build_markdown_uses_track_recipe_metadata (test_validation_tools.ValidationToolTests.test_build_markdown_uses_track_recipe_metadata) ... ok\ntest_collect_files_lists_audio_inputs (test_validation_tools.ValidationToolTests.test_collect_files_lists_audio_inputs) ... ok\ntest_duration_seconds_reads_float_wave_length (test_validation_tools.ValidationToolTests.test_duration_seconds_reads_float_wave_length) ... ok\ntest_duration_seconds_reads_wave_length (test_validation_tools.ValidationToolTests.test_duration_seconds_reads_wave_length) ... ok\n\n----------------------------------------------------------------------\nRan 99 tests in 3.483s\n\nOK\n"
+    "stderr": "test_acceptance_failures_collects_nonzero_and_failed_payloads (test_acceptance.AcceptanceTests.test_acceptance_failures_collects_nonzero_and_failed_payloads) ... ok\ntest_acceptance_failures_empty_when_all_selected_steps_pass (test_acceptance.AcceptanceTests.test_acceptance_failures_empty_when_all_selected_steps_pass) ... ok\ntest_wav2vec2_backend_can_use_external_romanizer (test_align.AlignTests.test_wav2vec2_backend_can_use_external_romanizer) ... ok\ntest_wav2vec2_backend_can_use_generic_text_map_for_non_latin_word (test_align.AlignTests.test_wav2vec2_backend_can_use_generic_text_map_for_non_latin_word) ... ok\ntest_wav2vec2_backend_can_use_japanese_reading_map_for_kanji (test_align.AlignTests.test_wav2vec2_backend_can_use_japanese_reading_map_for_kanji) ... ok\ntest_wav2vec2_backend_realigns_word_times (test_align.AlignTests.test_wav2vec2_backend_realigns_word_times) ... ok\ntest_wav2vec2_backend_rejects_unsupported_ja_kanji_text (test_align.AlignTests.test_wav2vec2_backend_rejects_unsupported_ja_kanji_text) ... ok\ntest_wav2vec2_backend_rejects_unsupported_text (test_align.AlignTests.test_wav2vec2_backend_rejects_unsupported_text) ... ok\ntest_wav2vec2_backend_supports_kana_japanese_without_external_romanizer (test_align.AlignTests.test_wav2vec2_backend_supports_kana_japanese_without_external_romanizer) ... ok\ntest_build_alignment_smoke_report_uses_fixture_manifests (test_alignment_smoke.AlignmentSmokeTests.test_build_alignment_smoke_report_uses_fixture_manifests) ... ok\ntest_build_stub_map_initializes_empty_values (test_alignment_text_map.AlignmentTextMapTests.test_build_stub_map_initializes_empty_values) ... ok\ntest_extract_non_latin_tokens_finds_unique_terms (test_alignment_text_map.AlignmentTextMapTests.test_extract_non_latin_tokens_finds_unique_terms) ... ok\ntest_package_exports_public_api (test_api.ApiTests.test_package_exports_public_api) ... ok\ntest_transcribe_file_returns_failure_result_without_backend_dependency (test_api.ApiTests.test_transcribe_file_returns_failure_result_without_backend_dependency) ... [2026-03-22 18:33:50.908] [ctranslate2] [thread 91968] [warning] The compute type inferred from the saved model is float16, but the target device or backend do not support efficient float16 computation. The model weights have been automatically converted to use the float32 compute type instead.\nok\ntest_run_case_collects_status_and_error_codes (test_benchmark_smoke.BenchmarkSmokeTests.test_run_case_collects_status_and_error_codes) ... ok\ntest_emit_result_json_on_failure_emits_failure_json (test_cli.CliTests.test_emit_result_json_on_failure_emits_failure_json) ... ok\ntest_emit_result_json_on_failure_only_suppresses_success_json (test_cli.CliTests.test_emit_result_json_on_failure_only_suppresses_success_json) ... ok\ntest_failure_json_written_only_with_flag (test_cli.CliTests.test_failure_json_written_only_with_flag) ... ok\ntest_output_file_writes_srt (test_cli.CliTests.test_output_file_writes_srt) ... ok\ntest_setup_align_lists_alignment_steps (test_cli.CliTests.test_setup_align_lists_alignment_steps) ... ok\ntest_setup_diarize_lists_hf_token_step (test_cli.CliTests.test_setup_diarize_lists_hf_token_step) ... ok\ntest_setup_validation_lists_manifest_steps (test_cli.CliTests.test_setup_validation_lists_manifest_steps) ... ok\ntest_strict_alignment_succeeds_with_word_timestamps (test_cli.CliTests.test_strict_alignment_succeeds_with_word_timestamps) ... ok\ntest_transcribe_accepts_channel_diarization_backend (test_cli.CliTests.test_transcribe_accepts_channel_diarization_backend) ... ok\ntest_transcribe_accepts_nemo_diarization_backend (test_cli.CliTests.test_transcribe_accepts_nemo_diarization_backend) ... ok\ntest_transcribe_emits_json_and_exit_zero (test_cli.CliTests.test_transcribe_emits_json_and_exit_zero) ... ok\ntest_usage_error_returns_40 (test_cli.CliTests.test_usage_error_returns_40) ... ok\ntest_whisperx_align_model_requests_alignment (test_cli.CliTests.test_whisperx_align_model_requests_alignment) ... ok\ntest_whisperx_frontend_maps_legacy_flags (test_cli.CliTests.test_whisperx_frontend_maps_legacy_flags) ... ok\ntest_whisperx_hf_token_sets_environment_for_backend (test_cli.CliTests.test_whisperx_hf_token_sets_environment_for_backend) ... ok\ntest_whisperx_highlight_words_emits_partial_compatibility_warning (test_cli.CliTests.test_whisperx_highlight_words_emits_partial_compatibility_warning) ... ok\ntest_cli_matrix_cases (test_compatibility_matrix.CompatibilityMatrixTests.test_cli_matrix_cases) ... ok\ntest_exit_matrix_cases (test_compatibility_matrix.CompatibilityMatrixTests.test_exit_matrix_cases) ... ok\ntest_json_matrix_cases (test_compatibility_matrix.CompatibilityMatrixTests.test_json_matrix_cases) ... ok\ntest_whisperx_diarize_stays_on_pyannote_backend (test_compatibility_matrix.CompatibilityMatrixTests.test_whisperx_diarize_stays_on_pyannote_backend) ... ok\ntest_doctor_prefers_torchaudio_for_diarization_decode (test_contracts.ContractTests.test_doctor_prefers_torchaudio_for_diarization_decode) ... ok\ntest_doctor_report_includes_extended_fields (test_contracts.ContractTests.test_doctor_report_includes_extended_fields) ... ok\ntest_doctor_reports_alignment_maps_and_speaker_hints (test_contracts.ContractTests.test_doctor_reports_alignment_maps_and_speaker_hints) ... ok\ntest_doctor_reports_alignment_strategy_summary (test_contracts.ContractTests.test_doctor_reports_alignment_strategy_summary) ... ok\ntest_effective_device_prefers_cuda_when_available (test_contracts.ContractTests.test_effective_device_prefers_cuda_when_available) ... ok\ntest_result_schema_accepts_failure_payload (test_contracts.ContractTests.test_result_schema_accepts_failure_payload) ... ok\ntest_result_schema_accepts_representative_json_fixtures (test_contracts.ContractTests.test_result_schema_accepts_representative_json_fixtures) ... ok\ntest_result_schema_accepts_success_payload (test_contracts.ContractTests.test_result_schema_accepts_success_payload) ... ok\ntest_build_diarization_smoke_report_uses_d4_fixtures (test_diarization_smoke.DiarizationSmokeTests.test_build_diarization_smoke_report_uses_d4_fixtures) ... ok\ntest_channel_backend_assigns_left_and_right_speakers (test_diarize.DiarizeTests.test_channel_backend_assigns_left_and_right_speakers) ... ok\ntest_channel_backend_rejects_mono_audio (test_diarize.DiarizeTests.test_channel_backend_rejects_mono_audio) ... ok\ntest_decode_error_is_runtime_failure (test_diarize.DiarizeTests.test_decode_error_is_runtime_failure) ... ok\ntest_diarize_passes_speaker_hints_to_pipeline (test_diarize.DiarizeTests.test_diarize_passes_speaker_hints_to_pipeline) ... ok\ntest_diarize_prefers_in_memory_waveform_when_torchaudio_is_available (test_diarize.DiarizeTests.test_diarize_prefers_in_memory_waveform_when_torchaudio_is_available) ... ok\ntest_diarize_supports_diarize_output_wrapper (test_diarize.DiarizeTests.test_diarize_supports_diarize_output_wrapper) ... ok\ntest_invalid_speaker_hint_is_configuration_error (test_diarize.DiarizeTests.test_invalid_speaker_hint_is_configuration_error) ... ok\ntest_invalid_token_is_auth_failure (test_diarize.DiarizeTests.test_invalid_token_is_auth_failure) ... ok\ntest_missing_model_is_model_unavailable (test_diarize.DiarizeTests.test_missing_model_is_model_unavailable) ... ok\ntest_missing_token_is_configuration_error (test_diarize.DiarizeTests.test_missing_token_is_configuration_error) ... ok\ntest_nemo_backend_assigns_speakers_from_rttm (test_diarize.DiarizeTests.test_nemo_backend_assigns_speakers_from_rttm) ... ok\ntest_nemo_backend_reports_missing_output (test_diarize.DiarizeTests.test_nemo_backend_reports_missing_output) ... ok\ntest_overlap_fixture_assigns_best_overlap_speaker (test_diarize_contracts.DiarizeContractTests.test_overlap_fixture_assigns_best_overlap_speaker) ... ok\ntest_build_failure_fixtures_creates_expected_cases (test_fixture_builders.FixtureBuilderTests.test_build_failure_fixtures_creates_expected_cases) ... ok\ntest_build_mixture_writes_output_and_recipe (test_fixture_builders.FixtureBuilderTests.test_build_mixture_writes_output_and_recipe) ... ok\ntest_build_multispeaker_mixture_supports_three_speakers (test_fixture_builders.FixtureBuilderTests.test_build_multispeaker_mixture_supports_three_speakers) ... ok\ntest_concatenate_wavs_writes_recipe (test_fixture_builders.FixtureBuilderTests.test_concatenate_wavs_writes_recipe) ... ok\ntest_dataset_config_returns_known_google_fixture (test_google_fleurs_export.GoogleFleursExportTests.test_dataset_config_returns_known_google_fixture) ... ok\ntest_export_fixture_falls_back_to_repo_archive (test_google_fleurs_export.GoogleFleursExportTests.test_export_fixture_falls_back_to_repo_archive) ... ok\ntest_float_to_pcm16_clips_samples (test_google_fleurs_export.GoogleFleursExportTests.test_float_to_pcm16_clips_samples) ... ok\ntest_parse_repo_tsv_reads_transcription_rows (test_google_fleurs_export.GoogleFleursExportTests.test_parse_repo_tsv_reads_transcription_rows) ... ok\ntest_repo_asset_url_builds_huggingface_path (test_google_fleurs_export.GoogleFleursExportTests.test_repo_asset_url_builds_huggingface_path) ... ok\ntest_to_mono_samples_handles_stereo_lists (test_google_fleurs_export.GoogleFleursExportTests.test_to_mono_samples_handles_stereo_lists) ... ok\ntest_report_blocks_when_cuda_unavailable (test_gpu_acceptance.GpuAcceptanceTests.test_report_blocks_when_cuda_unavailable) ... ok\ntest_report_passes_when_cuda_cases_use_gpu (test_gpu_acceptance.GpuAcceptanceTests.test_report_passes_when_cuda_cases_use_gpu) ... ok\ntest_report_records_decode_failure_as_residual_risk (test_gpu_acceptance.GpuAcceptanceTests.test_report_records_decode_failure_as_residual_risk) ... ok\ntest_build_stub_map_initializes_empty_readings (test_ja_reading_map.JapaneseReadingMapTests.test_build_stub_map_initializes_empty_readings) ... ok\ntest_extract_kanji_tokens_finds_unique_terms (test_ja_reading_map.JapaneseReadingMapTests.test_extract_kanji_tokens_finds_unique_terms) ... ok\ntest_duplicate_speaker_ids_are_rejected (test_models.ModelTests.test_duplicate_speaker_ids_are_rejected) ... ok\ntest_rounding_contract (test_models.ModelTests.test_rounding_contract) ... ok\ntest_segment_speaker_must_exist_in_speakers (test_models.ModelTests.test_segment_speaker_must_exist_in_speakers) ... ok\ntest_success_requires_no_errors (test_models.ModelTests.test_success_requires_no_errors) ... ok\ntest_word_speaker_must_exist_in_speakers (test_models.ModelTests.test_word_speaker_must_exist_in_speakers) ... ok\ntest_report_blocks_when_nemo_is_missing (test_nemo_acceptance.NemoAcceptanceTests.test_report_blocks_when_nemo_is_missing) ... ok\ntest_report_fails_when_success_case_does_not_succeed (test_nemo_acceptance.NemoAcceptanceTests.test_report_fails_when_success_case_does_not_succeed) ... ok\ntest_report_passes_when_invalid_config_and_success_cases_match (test_nemo_acceptance.NemoAcceptanceTests.test_report_passes_when_invalid_config_and_success_cases_match) ... ok\ntest_report_blocks_when_core_prerequisites_missing (test_pyannote_acceptance.PyannoteAcceptanceTests.test_report_blocks_when_core_prerequisites_missing) ... ok\ntest_report_passes_when_missing_token_case_and_success_case_match_expectations (test_pyannote_acceptance.PyannoteAcceptanceTests.test_report_passes_when_missing_token_case_and_success_case_match_expectations) ... ok\ntest_report_records_missing_token_case_and_blocks_token_case_without_token (test_pyannote_acceptance.PyannoteAcceptanceTests.test_report_records_missing_token_case_and_blocks_token_case_without_token) ... ok\ntest_permissive_alignment_failure_records_alignment_metadata (test_service.ServiceTests.test_permissive_alignment_failure_records_alignment_metadata) ... ok\ntest_permissive_optional_failures_become_degraded (test_service.ServiceTests.test_permissive_optional_failures_become_degraded) ... ok\ntest_strict_alignment_succeeds_with_existing_words (test_service.ServiceTests.test_strict_alignment_succeeds_with_existing_words) ... ok\ntest_strict_gpu_with_auto_fails_when_cuda_unavailable (test_service.ServiceTests.test_strict_gpu_with_auto_fails_when_cuda_unavailable) ... ok\ntest_build_report_can_include_alignment_smoke (test_validation_report.ValidationReportTests.test_build_report_can_include_alignment_smoke) ... ok\ntest_build_report_can_include_diarization_smoke (test_validation_report.ValidationReportTests.test_build_report_can_include_diarization_smoke) ... ok\ntest_build_report_can_include_gpu_acceptance (test_validation_report.ValidationReportTests.test_build_report_can_include_gpu_acceptance) ... ok\ntest_build_report_can_include_nemo_acceptance (test_validation_report.ValidationReportTests.test_build_report_can_include_nemo_acceptance) ... ok\ntest_build_report_can_include_pyannote_acceptance (test_validation_report.ValidationReportTests.test_build_report_can_include_pyannote_acceptance) ... ok\ntest_build_report_can_include_smoke (test_validation_report.ValidationReportTests.test_build_report_can_include_smoke) ... ok\ntest_build_report_collects_doctor_and_tests (test_validation_report.ValidationReportTests.test_build_report_collects_doctor_and_tests) ... ok\ntest_build_markdown_emits_manifest_row (test_validation_tools.ValidationToolTests.test_build_markdown_emits_manifest_row) ... ok\ntest_build_markdown_uses_manifest_and_recipe_metadata (test_validation_tools.ValidationToolTests.test_build_markdown_uses_manifest_and_recipe_metadata) ... ok\ntest_build_markdown_uses_track_recipe_metadata (test_validation_tools.ValidationToolTests.test_build_markdown_uses_track_recipe_metadata) ... ok\ntest_collect_files_lists_audio_inputs (test_validation_tools.ValidationToolTests.test_collect_files_lists_audio_inputs) ... ok\ntest_duration_seconds_reads_float_wave_length (test_validation_tools.ValidationToolTests.test_duration_seconds_reads_float_wave_length) ... ok\ntest_duration_seconds_reads_wave_length (test_validation_tools.ValidationToolTests.test_duration_seconds_reads_wave_length) ... ok\n\n----------------------------------------------------------------------\nRan 100 tests in 31.126s\n\nOK\n"
   },
-  "smoke": {
-    "returncode": 0,
-    "stdout": "tmp_smoke.wav\n{\n  \"python_version\": \"3.12.3\",\n  \"platform\": \"Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39\",\n  \"faster_whisper_available\": true,\n  \"ctranslate2_available\": true,\n  \"torch_available\": true,\n  \"torchaudio_available\": true,\n  \"torchcodec_available\": true,\n  \"torchcodec_importable\": false,\n  \"torch_cuda_available\": true,\n  \"nvidia_smi_available\": true,\n  \"ffmpeg_available\": false,\n  \"nvidia_summary\": \"NVIDIA GeForce RTX 3090, 595.79\",\n  \"hf_token_configured\": false,\n  \"diarization_backends\": [\n    \"none\",\n    \"channel\",\n    \"nemo\",\n    \"pyannote\"\n  ],\n  \"diarization_backend_available\": true,\n  \"nemo_backend_available\": false,\n  \"pyannote_backend_available\": true,\n  \"alignment_backend_available\": true,\n  \"diarization_ready\": true,\n  \"diarization_issue_code\": null,\n  \"nemo_ready\": false,\n  \"nemo_issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n  \"pyannote_ready\": false,\n  \"pyannote_issue_code\": \"HF_TOKEN_MISSING\",\n  \"diarization_decode_ready\": true,\n  \"diarization_decode_backend\": \"torchaudio\",\n  \"alignment_ready\": true,\n  \"alignment_issue_code\": null,\n  \"alignment_romanizer_configured\": false,\n  \"alignment_text_map_configured\": false,\n  \"alignment_ja_reading_map_configured\": false,\n  \"alignment_map_issue_code\": null,\n  \"alignment_language_strategy\": \"torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported\",\n  \"pyannote_num_speakers\": null,\n  \"pyannote_min_speakers\": null,\n  \"pyannote_max_speakers\": null,\n  \"cache_dir\": \"/home/takanobu/.cache\",\n  \"cache_dir_writable\": true,\n  \"detected_device\": \"cuda\",\n  \"known_issue_codes\": [\n    \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"HF_TOKEN_MISSING\"\n  ],\n  \"canonical_issue_codes\": [\n    \"GPU_UNAVAILABLE\",\n    \"DEPENDENCY_MISSING\",\n    \"OUTPUT_PERMISSION_DENIED\",\n    \"AUDIO_DECODE_FAILURE\",\n    \"INTERNAL_ERROR\",\n    \"CONFIG_INVALID\",\n    \"ALIGNMENT_BACKEND_UNAVAILABLE\",\n    \"ALIGNMENT_MODEL_UNAVAILABLE\",\n    \"ALIGNMENT_LANGUAGE_UNSUPPORTED\",\n    \"ALIGNMENT_TEXT_UNAVAILABLE\",\n    \"ALIGNMENT_TEXT_UNSUPPORTED\",\n    \"ALIGNMENT_RUNTIME_FAILURE\",\n    \"ALIGNMENT_TEXT_MAP_INVALID\",\n    \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"DIARIZATION_DECODE_UNAVAILABLE\",\n    \"HF_TOKEN_MISSING\",\n    \"DIARIZATION_AUTH_FAILURE\",\n    \"DIARIZATION_MODEL_UNAVAILABLE\",\n    \"DIARIZATION_DECODE_FAILURE\",\n    \"DIARIZATION_CHANNELS_UNAVAILABLE\",\n    \"DIARIZATION_CHANNEL_AMBIGUOUS\",\n    \"DIARIZATION_AUDIO_UNSUPPORTED\",\n    \"NEMO_MODEL_UNAVAILABLE\",\n    \"NEMO_RUNTIME_FAILURE\",\n    \"NEMO_OUTPUT_MISSING\"\n  ],\n  \"recommended_actions\": [\n    \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\",\n    \"Set `HF_TOKEN` before running pyannote diarization.\"\n  ],\n  \"backend_statuses\": {\n    \"diarization\": {\n      \"channel\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"nemo\": {\n        \"installed\": false,\n        \"importable\": false,\n        \"ready\": false,\n        \"issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n        \"recommended_actions\": [\n          \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n        ]\n      },\n      \"pyannote\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": \"HF_TOKEN_MISSING\",\n        \"recommended_actions\": [\n          \"Set `HF_TOKEN` before running pyannote diarization.\"\n        ]\n      }\n    },\n    \"decode\": {\n      \"torchaudio\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ffmpeg_torchcodec\": {\n        \"installed\": false,\n        \"importable\": false,\n        \"ready\": false,\n        \"issue_code\": \"DIARIZATION_DECODE_UNAVAILABLE\",\n        \"recommended_actions\": [\n          \"Install system FFmpeg and verify `torchcodec` can import successfully.\"\n        ]\n      }\n    },\n    \"alignment\": {\n      \"native_latin\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ja_kana\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": true,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"ja_reading_map\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"text_map\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": []\n      },\n      \"romanizer\": {\n        \"installed\": true,\n        \"importable\": true,\n        \"ready\": false,\n        \"issue_code\": null,\n        \"recommended_actions\": [\n          \"Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages.\"\n        ]\n      }\n    }\n  }\n}\n{\n  \"schema_version\": \"1.0.0\",\n  \"status\": \"success\",\n  \"text\": \"\",\n  \"language\": \"ko\",\n  \"segments\": [],\n  \"words\": [],\n  \"speakers\": [],\n  \"metadata\": {\n    \"asr_backend\": \"faster-whisper\",\n    \"align_backend\": \"none\",\n    \"diarization_backend\": \"none\",\n    \"device\": \"cpu\",\n    \"requested_device\": \"cpu\",\n    \"actual_device\": \"cpu\",\n    \"alignment_strategy\": null,\n    \"alignment_token_source\": null,\n    \"fallbacks\": [],\n    \"requested_features\": [\n      \"asr\"\n    ],\n    \"completed_features\": [\n      \"asr\"\n    ],\n    \"failed_features\": []\n  },\n  \"error_code\": null,\n  \"error_category\": null,\n  \"backend_errors\": []\n}\n",
-    "stderr": "[2026-03-22 15:54:12.752] [ctranslate2] [thread 80232] [warning] The compute type inferred from the saved model is float16, but the target device or backend do not support efficient float16 computation. The model weights have been automatically converted to use the float32 compute type instead.\ntranscription completed\n"
-  },
-  "alignment_smoke": {
+  "smoke": null,
+  "alignment_smoke": null,
+  "diarization_smoke": null,
+  "pyannote_acceptance": {
     "returncode": 0,
     "payload": {
       "report_version": "0.1",
-      "checks": [
+      "doctor": {
+        "python_version": "3.12.3",
+        "platform": "Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "faster_whisper_available": true,
+        "ctranslate2_available": true,
+        "torch_available": true,
+        "torchaudio_available": true,
+        "torchcodec_available": true,
+        "torchcodec_importable": false,
+        "torch_cuda_available": true,
+        "nvidia_smi_available": true,
+        "ffmpeg_available": true,
+        "nvidia_summary": "NVIDIA GeForce RTX 3090, 595.79",
+        "hf_token_configured": true,
+        "diarization_backends": [
+          "none",
+          "channel",
+          "nemo",
+          "pyannote"
+        ],
+        "diarization_backend_available": true,
+        "nemo_backend_available": false,
+        "pyannote_backend_available": true,
+        "alignment_backend_available": true,
+        "diarization_ready": true,
+        "diarization_issue_code": null,
+        "nemo_ready": false,
+        "nemo_issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
+        "pyannote_ready": true,
+        "pyannote_issue_code": null,
+        "diarization_decode_ready": true,
+        "diarization_decode_backend": "torchaudio",
+        "alignment_ready": true,
+        "alignment_issue_code": null,
+        "alignment_romanizer_configured": false,
+        "alignment_text_map_configured": false,
+        "alignment_ja_reading_map_configured": false,
+        "alignment_map_issue_code": null,
+        "alignment_language_strategy": "torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported",
+        "pyannote_num_speakers": null,
+        "pyannote_min_speakers": null,
+        "pyannote_max_speakers": null,
+        "cache_dir": "/home/takanobu/.cache",
+        "cache_dir_writable": true,
+        "detected_device": "cuda",
+        "known_issue_codes": [
+          "DIARIZATION_BACKEND_UNAVAILABLE"
+        ],
+        "canonical_issue_codes": [
+          "GPU_UNAVAILABLE",
+          "DEPENDENCY_MISSING",
+          "OUTPUT_PERMISSION_DENIED",
+          "AUDIO_DECODE_FAILURE",
+          "INTERNAL_ERROR",
+          "CONFIG_INVALID",
+          "ALIGNMENT_BACKEND_UNAVAILABLE",
+          "ALIGNMENT_MODEL_UNAVAILABLE",
+          "ALIGNMENT_LANGUAGE_UNSUPPORTED",
+          "ALIGNMENT_TEXT_UNAVAILABLE",
+          "ALIGNMENT_TEXT_UNSUPPORTED",
+          "ALIGNMENT_RUNTIME_FAILURE",
+          "ALIGNMENT_TEXT_MAP_INVALID",
+          "DIARIZATION_BACKEND_UNAVAILABLE",
+          "DIARIZATION_DECODE_UNAVAILABLE",
+          "HF_TOKEN_MISSING",
+          "DIARIZATION_AUTH_FAILURE",
+          "DIARIZATION_MODEL_UNAVAILABLE",
+          "DIARIZATION_DECODE_FAILURE",
+          "DIARIZATION_CHANNELS_UNAVAILABLE",
+          "DIARIZATION_CHANNEL_AMBIGUOUS",
+          "DIARIZATION_AUDIO_UNSUPPORTED",
+          "NEMO_MODEL_UNAVAILABLE",
+          "NEMO_RUNTIME_FAILURE",
+          "NEMO_OUTPUT_MISSING"
+        ],
+        "recommended_actions": [
+          "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
+        ],
+        "backend_statuses": {
+          "diarization": {
+            "channel": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "nemo": {
+              "installed": false,
+              "importable": false,
+              "ready": false,
+              "issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
+              "recommended_actions": [
+                "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
+              ]
+            },
+            "pyannote": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            }
+          },
+          "decode": {
+            "torchaudio": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ffmpeg_torchcodec": {
+              "installed": true,
+              "importable": false,
+              "ready": false,
+              "issue_code": "DIARIZATION_DECODE_UNAVAILABLE",
+              "recommended_actions": [
+                "Install system FFmpeg and verify `torchcodec` can import successfully."
+              ]
+            }
+          },
+          "alignment": {
+            "native_latin": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ja_kana": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ja_reading_map": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "text_map": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "romanizer": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": [
+                "Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages."
+              ]
+            }
+          }
+        }
+      },
+      "cases": [
         {
-          "dataset": "D2_SHORT_EN",
-          "fixture": "12952903060751652532.wav",
-          "success": true,
-          "strategy": "en",
-          "token_source": "native",
-          "word_count": 24,
-          "error_codes": []
+          "name": "pyannote_missing_token",
+          "expectation": "degraded_or_failure_with_HF_TOKEN_MISSING",
+          "blocked_reason": null,
+          "status": "degraded",
+          "error_code": "HF_TOKEN_MISSING",
+          "error_category": "configuration",
+          "speaker_count": 0,
+          "passed": true
         },
         {
-          "dataset": "D1_SHORT_JA",
-          "fixture": "10411584430488337925.wav",
-          "success": true,
-          "strategy": "ja-kana",
-          "token_source": "ja_reading_map",
-          "word_count": 1,
-          "error_codes": []
+          "name": "pyannote_with_token_and_hints",
+          "expectation": "success_with_speaker_hints",
+          "blocked_reason": null,
+          "status": "success",
+          "error_code": null,
+          "error_category": null,
+          "speaker_count": 1,
+          "passed": true
         }
       ],
+      "blocked": false,
+      "blocked_reasons": [],
       "all_passed": true
     },
-    "stdout": "{\n  \"report_version\": \"0.1\",\n  \"checks\": [\n    {\n      \"dataset\": \"D2_SHORT_EN\",\n      \"fixture\": \"12952903060751652532.wav\",\n      \"success\": true,\n      \"strategy\": \"en\",\n      \"token_source\": \"native\",\n      \"word_count\": 24,\n      \"error_codes\": []\n    },\n    {\n      \"dataset\": \"D1_SHORT_JA\",\n      \"fixture\": \"10411584430488337925.wav\",\n      \"success\": true,\n      \"strategy\": \"ja-kana\",\n      \"token_source\": \"ja_reading_map\",\n      \"word_count\": 1,\n      \"error_codes\": []\n    }\n  ],\n  \"all_passed\": true\n}\n",
+    "stdout": "{\n  \"report_version\": \"0.1\",\n  \"doctor\": {\n    \"python_version\": \"3.12.3\",\n    \"platform\": \"Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39\",\n    \"faster_whisper_available\": true,\n    \"ctranslate2_available\": true,\n    \"torch_available\": true,\n    \"torchaudio_available\": true,\n    \"torchcodec_available\": true,\n    \"torchcodec_importable\": false,\n    \"torch_cuda_available\": true,\n    \"nvidia_smi_available\": true,\n    \"ffmpeg_available\": true,\n    \"nvidia_summary\": \"NVIDIA GeForce RTX 3090, 595.79\",\n    \"hf_token_configured\": true,\n    \"diarization_backends\": [\n      \"none\",\n      \"channel\",\n      \"nemo\",\n      \"pyannote\"\n    ],\n    \"diarization_backend_available\": true,\n    \"nemo_backend_available\": false,\n    \"pyannote_backend_available\": true,\n    \"alignment_backend_available\": true,\n    \"diarization_ready\": true,\n    \"diarization_issue_code\": null,\n    \"nemo_ready\": false,\n    \"nemo_issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"pyannote_ready\": true,\n    \"pyannote_issue_code\": null,\n    \"diarization_decode_ready\": true,\n    \"diarization_decode_backend\": \"torchaudio\",\n    \"alignment_ready\": true,\n    \"alignment_issue_code\": null,\n    \"alignment_romanizer_configured\": false,\n    \"alignment_text_map_configured\": false,\n    \"alignment_ja_reading_map_configured\": false,\n    \"alignment_map_issue_code\": null,\n    \"alignment_language_strategy\": \"torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported\",\n    \"pyannote_num_speakers\": null,\n    \"pyannote_min_speakers\": null,\n    \"pyannote_max_speakers\": null,\n    \"cache_dir\": \"/home/takanobu/.cache\",\n    \"cache_dir_writable\": true,\n    \"detected_device\": \"cuda\",\n    \"known_issue_codes\": [\n      \"DIARIZATION_BACKEND_UNAVAILABLE\"\n    ],\n    \"canonical_issue_codes\": [\n      \"GPU_UNAVAILABLE\",\n      \"DEPENDENCY_MISSING\",\n      \"OUTPUT_PERMISSION_DENIED\",\n      \"AUDIO_DECODE_FAILURE\",\n      \"INTERNAL_ERROR\",\n      \"CONFIG_INVALID\",\n      \"ALIGNMENT_BACKEND_UNAVAILABLE\",\n      \"ALIGNMENT_MODEL_UNAVAILABLE\",\n      \"ALIGNMENT_LANGUAGE_UNSUPPORTED\",\n      \"ALIGNMENT_TEXT_UNAVAILABLE\",\n      \"ALIGNMENT_TEXT_UNSUPPORTED\",\n      \"ALIGNMENT_RUNTIME_FAILURE\",\n      \"ALIGNMENT_TEXT_MAP_INVALID\",\n      \"DIARIZATION_BACKEND_UNAVAILABLE\",\n      \"DIARIZATION_DECODE_UNAVAILABLE\",\n      \"HF_TOKEN_MISSING\",\n      \"DIARIZATION_AUTH_FAILURE\",\n      \"DIARIZATION_MODEL_UNAVAILABLE\",\n      \"DIARIZATION_DECODE_FAILURE\",\n      \"DIARIZATION_CHANNELS_UNAVAILABLE\",\n      \"DIARIZATION_CHANNEL_AMBIGUOUS\",\n      \"DIARIZATION_AUDIO_UNSUPPORTED\",\n      \"NEMO_MODEL_UNAVAILABLE\",\n      \"NEMO_RUNTIME_FAILURE\",\n      \"NEMO_OUTPUT_MISSING\"\n    ],\n    \"recommended_actions\": [\n      \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n    ],\n    \"backend_statuses\": {\n      \"diarization\": {\n        \"channel\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"nemo\": {\n          \"installed\": false,\n          \"importable\": false,\n          \"ready\": false,\n          \"issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n          \"recommended_actions\": [\n            \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n          ]\n        },\n        \"pyannote\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        }\n      },\n      \"decode\": {\n        \"torchaudio\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ffmpeg_torchcodec\": {\n          \"installed\": true,\n          \"importable\": false,\n          \"ready\": false,\n          \"issue_code\": \"DIARIZATION_DECODE_UNAVAILABLE\",\n          \"recommended_actions\": [\n            \"Install system FFmpeg and verify `torchcodec` can import successfully.\"\n          ]\n        }\n      },\n      \"alignment\": {\n        \"native_latin\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ja_kana\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ja_reading_map\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"text_map\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"romanizer\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": [\n            \"Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages.\"\n          ]\n        }\n      }\n    }\n  },\n  \"cases\": [\n    {\n      \"name\": \"pyannote_missing_token\",\n      \"expectation\": \"degraded_or_failure_with_HF_TOKEN_MISSING\",\n      \"blocked_reason\": null,\n      \"status\": \"degraded\",\n      \"error_code\": \"HF_TOKEN_MISSING\",\n      \"error_category\": \"configuration\",\n      \"speaker_count\": 0,\n      \"passed\": true\n    },\n    {\n      \"name\": \"pyannote_with_token_and_hints\",\n      \"expectation\": \"success_with_speaker_hints\",\n      \"blocked_reason\": null,\n      \"status\": \"success\",\n      \"error_code\": null,\n      \"error_category\": null,\n      \"speaker_count\": 1,\n      \"passed\": true\n    }\n  ],\n  \"blocked\": false,\n  \"blocked_reasons\": [],\n  \"all_passed\": true\n}\n",
+    "stderr": "[2026-03-22 18:34:38.319] [ctranslate2] [thread 92103] [warning] The compute type inferred from the saved model is float16, but the target device or backend do not support efficient float16 computation. The model weights have been automatically converted to use the float32 compute type instead.\n[2026-03-22 18:35:15.444] [ctranslate2] [thread 92103] [warning] The compute type inferred from the saved model is float16, but the target device or backend do not support efficient float16 computation. The model weights have been automatically converted to use the float32 compute type instead.\n/mnt/c/Users/takanobu/Nextcloud/dev/whisper-omega/.venv-system/lib/python3.12/site-packages/pyannote/audio/models/blocks/pooling.py:103: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /pytorch/aten/src/ATen/native/ReduceOps.cpp:1857.)\n  std = sequences.std(dim=-1, correction=1)\n/mnt/c/Users/takanobu/Nextcloud/dev/whisper-omega/.venv-system/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:3824: RuntimeWarning: Mean of empty slice\n  return _methods._mean(a, axis=axis, dtype=dtype,\n/mnt/c/Users/takanobu/Nextcloud/dev/whisper-omega/.venv-system/lib/python3.12/site-packages/numpy/_core/_methods.py:134: RuntimeWarning: invalid value encountered in divide\n  ret = um.true_divide(\n"
+  },
+  "nemo_acceptance": {
+    "returncode": 2,
+    "payload": {
+      "report_version": "0.1",
+      "doctor": {
+        "python_version": "3.12.3",
+        "platform": "Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "faster_whisper_available": true,
+        "ctranslate2_available": true,
+        "torch_available": true,
+        "torchaudio_available": true,
+        "torchcodec_available": true,
+        "torchcodec_importable": false,
+        "torch_cuda_available": true,
+        "nvidia_smi_available": true,
+        "ffmpeg_available": true,
+        "nvidia_summary": "NVIDIA GeForce RTX 3090, 595.79",
+        "hf_token_configured": true,
+        "diarization_backends": [
+          "none",
+          "channel",
+          "nemo",
+          "pyannote"
+        ],
+        "diarization_backend_available": true,
+        "nemo_backend_available": false,
+        "pyannote_backend_available": true,
+        "alignment_backend_available": true,
+        "diarization_ready": true,
+        "diarization_issue_code": null,
+        "nemo_ready": false,
+        "nemo_issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
+        "pyannote_ready": true,
+        "pyannote_issue_code": null,
+        "diarization_decode_ready": true,
+        "diarization_decode_backend": "torchaudio",
+        "alignment_ready": true,
+        "alignment_issue_code": null,
+        "alignment_romanizer_configured": false,
+        "alignment_text_map_configured": false,
+        "alignment_ja_reading_map_configured": false,
+        "alignment_map_issue_code": null,
+        "alignment_language_strategy": "torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported",
+        "pyannote_num_speakers": null,
+        "pyannote_min_speakers": null,
+        "pyannote_max_speakers": null,
+        "cache_dir": "/home/takanobu/.cache",
+        "cache_dir_writable": true,
+        "detected_device": "cuda",
+        "known_issue_codes": [
+          "DIARIZATION_BACKEND_UNAVAILABLE"
+        ],
+        "canonical_issue_codes": [
+          "GPU_UNAVAILABLE",
+          "DEPENDENCY_MISSING",
+          "OUTPUT_PERMISSION_DENIED",
+          "AUDIO_DECODE_FAILURE",
+          "INTERNAL_ERROR",
+          "CONFIG_INVALID",
+          "ALIGNMENT_BACKEND_UNAVAILABLE",
+          "ALIGNMENT_MODEL_UNAVAILABLE",
+          "ALIGNMENT_LANGUAGE_UNSUPPORTED",
+          "ALIGNMENT_TEXT_UNAVAILABLE",
+          "ALIGNMENT_TEXT_UNSUPPORTED",
+          "ALIGNMENT_RUNTIME_FAILURE",
+          "ALIGNMENT_TEXT_MAP_INVALID",
+          "DIARIZATION_BACKEND_UNAVAILABLE",
+          "DIARIZATION_DECODE_UNAVAILABLE",
+          "HF_TOKEN_MISSING",
+          "DIARIZATION_AUTH_FAILURE",
+          "DIARIZATION_MODEL_UNAVAILABLE",
+          "DIARIZATION_DECODE_FAILURE",
+          "DIARIZATION_CHANNELS_UNAVAILABLE",
+          "DIARIZATION_CHANNEL_AMBIGUOUS",
+          "DIARIZATION_AUDIO_UNSUPPORTED",
+          "NEMO_MODEL_UNAVAILABLE",
+          "NEMO_RUNTIME_FAILURE",
+          "NEMO_OUTPUT_MISSING"
+        ],
+        "recommended_actions": [
+          "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
+        ],
+        "backend_statuses": {
+          "diarization": {
+            "channel": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "nemo": {
+              "installed": false,
+              "importable": false,
+              "ready": false,
+              "issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
+              "recommended_actions": [
+                "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
+              ]
+            },
+            "pyannote": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            }
+          },
+          "decode": {
+            "torchaudio": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ffmpeg_torchcodec": {
+              "installed": true,
+              "importable": false,
+              "ready": false,
+              "issue_code": "DIARIZATION_DECODE_UNAVAILABLE",
+              "recommended_actions": [
+                "Install system FFmpeg and verify `torchcodec` can import successfully."
+              ]
+            }
+          },
+          "alignment": {
+            "native_latin": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ja_kana": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ja_reading_map": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "text_map": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "romanizer": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": [
+                "Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages."
+              ]
+            }
+          }
+        }
+      },
+      "cases": [
+        {
+          "name": "nemo_invalid_config",
+          "expectation": "failure_with_CONFIG_INVALID",
+          "blocked_reason": "DIARIZATION_BACKEND_UNAVAILABLE",
+          "status": null,
+          "error_code": null,
+          "error_category": null,
+          "speaker_count": null,
+          "passed": false
+        },
+        {
+          "name": "nemo_with_hints",
+          "expectation": "success_with_speaker_hints",
+          "blocked_reason": "DIARIZATION_BACKEND_UNAVAILABLE",
+          "status": null,
+          "error_code": null,
+          "error_category": null,
+          "speaker_count": null,
+          "passed": false
+        }
+      ],
+      "blocked": true,
+      "blocked_reasons": [
+        "DIARIZATION_BACKEND_UNAVAILABLE"
+      ],
+      "all_passed": false
+    },
+    "stdout": "{\n  \"report_version\": \"0.1\",\n  \"doctor\": {\n    \"python_version\": \"3.12.3\",\n    \"platform\": \"Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39\",\n    \"faster_whisper_available\": true,\n    \"ctranslate2_available\": true,\n    \"torch_available\": true,\n    \"torchaudio_available\": true,\n    \"torchcodec_available\": true,\n    \"torchcodec_importable\": false,\n    \"torch_cuda_available\": true,\n    \"nvidia_smi_available\": true,\n    \"ffmpeg_available\": true,\n    \"nvidia_summary\": \"NVIDIA GeForce RTX 3090, 595.79\",\n    \"hf_token_configured\": true,\n    \"diarization_backends\": [\n      \"none\",\n      \"channel\",\n      \"nemo\",\n      \"pyannote\"\n    ],\n    \"diarization_backend_available\": true,\n    \"nemo_backend_available\": false,\n    \"pyannote_backend_available\": true,\n    \"alignment_backend_available\": true,\n    \"diarization_ready\": true,\n    \"diarization_issue_code\": null,\n    \"nemo_ready\": false,\n    \"nemo_issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"pyannote_ready\": true,\n    \"pyannote_issue_code\": null,\n    \"diarization_decode_ready\": true,\n    \"diarization_decode_backend\": \"torchaudio\",\n    \"alignment_ready\": true,\n    \"alignment_issue_code\": null,\n    \"alignment_romanizer_configured\": false,\n    \"alignment_text_map_configured\": false,\n    \"alignment_ja_reading_map_configured\": false,\n    \"alignment_map_issue_code\": null,\n    \"alignment_language_strategy\": \"torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported\",\n    \"pyannote_num_speakers\": null,\n    \"pyannote_min_speakers\": null,\n    \"pyannote_max_speakers\": null,\n    \"cache_dir\": \"/home/takanobu/.cache\",\n    \"cache_dir_writable\": true,\n    \"detected_device\": \"cuda\",\n    \"known_issue_codes\": [\n      \"DIARIZATION_BACKEND_UNAVAILABLE\"\n    ],\n    \"canonical_issue_codes\": [\n      \"GPU_UNAVAILABLE\",\n      \"DEPENDENCY_MISSING\",\n      \"OUTPUT_PERMISSION_DENIED\",\n      \"AUDIO_DECODE_FAILURE\",\n      \"INTERNAL_ERROR\",\n      \"CONFIG_INVALID\",\n      \"ALIGNMENT_BACKEND_UNAVAILABLE\",\n      \"ALIGNMENT_MODEL_UNAVAILABLE\",\n      \"ALIGNMENT_LANGUAGE_UNSUPPORTED\",\n      \"ALIGNMENT_TEXT_UNAVAILABLE\",\n      \"ALIGNMENT_TEXT_UNSUPPORTED\",\n      \"ALIGNMENT_RUNTIME_FAILURE\",\n      \"ALIGNMENT_TEXT_MAP_INVALID\",\n      \"DIARIZATION_BACKEND_UNAVAILABLE\",\n      \"DIARIZATION_DECODE_UNAVAILABLE\",\n      \"HF_TOKEN_MISSING\",\n      \"DIARIZATION_AUTH_FAILURE\",\n      \"DIARIZATION_MODEL_UNAVAILABLE\",\n      \"DIARIZATION_DECODE_FAILURE\",\n      \"DIARIZATION_CHANNELS_UNAVAILABLE\",\n      \"DIARIZATION_CHANNEL_AMBIGUOUS\",\n      \"DIARIZATION_AUDIO_UNSUPPORTED\",\n      \"NEMO_MODEL_UNAVAILABLE\",\n      \"NEMO_RUNTIME_FAILURE\",\n      \"NEMO_OUTPUT_MISSING\"\n    ],\n    \"recommended_actions\": [\n      \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n    ],\n    \"backend_statuses\": {\n      \"diarization\": {\n        \"channel\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"nemo\": {\n          \"installed\": false,\n          \"importable\": false,\n          \"ready\": false,\n          \"issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n          \"recommended_actions\": [\n            \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n          ]\n        },\n        \"pyannote\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        }\n      },\n      \"decode\": {\n        \"torchaudio\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ffmpeg_torchcodec\": {\n          \"installed\": true,\n          \"importable\": false,\n          \"ready\": false,\n          \"issue_code\": \"DIARIZATION_DECODE_UNAVAILABLE\",\n          \"recommended_actions\": [\n            \"Install system FFmpeg and verify `torchcodec` can import successfully.\"\n          ]\n        }\n      },\n      \"alignment\": {\n        \"native_latin\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ja_kana\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ja_reading_map\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"text_map\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"romanizer\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": [\n            \"Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages.\"\n          ]\n        }\n      }\n    }\n  },\n  \"cases\": [\n    {\n      \"name\": \"nemo_invalid_config\",\n      \"expectation\": \"failure_with_CONFIG_INVALID\",\n      \"blocked_reason\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n      \"status\": null,\n      \"error_code\": null,\n      \"error_category\": null,\n      \"speaker_count\": null,\n      \"passed\": false\n    },\n    {\n      \"name\": \"nemo_with_hints\",\n      \"expectation\": \"success_with_speaker_hints\",\n      \"blocked_reason\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n      \"status\": null,\n      \"error_code\": null,\n      \"error_category\": null,\n      \"speaker_count\": null,\n      \"passed\": false\n    }\n  ],\n  \"blocked\": true,\n  \"blocked_reasons\": [\n    \"DIARIZATION_BACKEND_UNAVAILABLE\"\n  ],\n  \"all_passed\": false\n}\n",
     "stderr": ""
   },
-  "diarization_smoke": {
+  "gpu_acceptance": {
     "returncode": 0,
     "payload": {
       "report_version": "0.1",
-      "checks": [
-        {
-          "fixture": "d4_mix_01.wav",
-          "track_count": 2,
-          "backends": [
-            {
-              "backend": "pyannote",
-              "fixture": "d4_mix_01.wav",
-              "success": true,
-              "speaker_ids": [
-                "SPEAKER_A",
-                "SPEAKER_B"
-              ],
-              "assigned_speakers": [
-                "SPEAKER_A",
-                "SPEAKER_B"
-              ],
-              "error_codes": []
+      "doctor": {
+        "python_version": "3.12.3",
+        "platform": "Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "faster_whisper_available": true,
+        "ctranslate2_available": true,
+        "torch_available": true,
+        "torchaudio_available": true,
+        "torchcodec_available": true,
+        "torchcodec_importable": false,
+        "torch_cuda_available": true,
+        "nvidia_smi_available": true,
+        "ffmpeg_available": true,
+        "nvidia_summary": "NVIDIA GeForce RTX 3090, 595.79",
+        "hf_token_configured": true,
+        "diarization_backends": [
+          "none",
+          "channel",
+          "nemo",
+          "pyannote"
+        ],
+        "diarization_backend_available": true,
+        "nemo_backend_available": false,
+        "pyannote_backend_available": true,
+        "alignment_backend_available": true,
+        "diarization_ready": true,
+        "diarization_issue_code": null,
+        "nemo_ready": false,
+        "nemo_issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
+        "pyannote_ready": true,
+        "pyannote_issue_code": null,
+        "diarization_decode_ready": true,
+        "diarization_decode_backend": "torchaudio",
+        "alignment_ready": true,
+        "alignment_issue_code": null,
+        "alignment_romanizer_configured": false,
+        "alignment_text_map_configured": false,
+        "alignment_ja_reading_map_configured": false,
+        "alignment_map_issue_code": null,
+        "alignment_language_strategy": "torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported",
+        "pyannote_num_speakers": null,
+        "pyannote_min_speakers": null,
+        "pyannote_max_speakers": null,
+        "cache_dir": "/home/takanobu/.cache",
+        "cache_dir_writable": true,
+        "detected_device": "cuda",
+        "known_issue_codes": [
+          "DIARIZATION_BACKEND_UNAVAILABLE"
+        ],
+        "canonical_issue_codes": [
+          "GPU_UNAVAILABLE",
+          "DEPENDENCY_MISSING",
+          "OUTPUT_PERMISSION_DENIED",
+          "AUDIO_DECODE_FAILURE",
+          "INTERNAL_ERROR",
+          "CONFIG_INVALID",
+          "ALIGNMENT_BACKEND_UNAVAILABLE",
+          "ALIGNMENT_MODEL_UNAVAILABLE",
+          "ALIGNMENT_LANGUAGE_UNSUPPORTED",
+          "ALIGNMENT_TEXT_UNAVAILABLE",
+          "ALIGNMENT_TEXT_UNSUPPORTED",
+          "ALIGNMENT_RUNTIME_FAILURE",
+          "ALIGNMENT_TEXT_MAP_INVALID",
+          "DIARIZATION_BACKEND_UNAVAILABLE",
+          "DIARIZATION_DECODE_UNAVAILABLE",
+          "HF_TOKEN_MISSING",
+          "DIARIZATION_AUTH_FAILURE",
+          "DIARIZATION_MODEL_UNAVAILABLE",
+          "DIARIZATION_DECODE_FAILURE",
+          "DIARIZATION_CHANNELS_UNAVAILABLE",
+          "DIARIZATION_CHANNEL_AMBIGUOUS",
+          "DIARIZATION_AUDIO_UNSUPPORTED",
+          "NEMO_MODEL_UNAVAILABLE",
+          "NEMO_RUNTIME_FAILURE",
+          "NEMO_OUTPUT_MISSING"
+        ],
+        "recommended_actions": [
+          "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
+        ],
+        "backend_statuses": {
+          "diarization": {
+            "channel": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
             },
-            {
-              "backend": "nemo",
-              "fixture": "d4_mix_01.wav",
-              "success": true,
-              "speaker_ids": [
-                "SPEAKER_A",
-                "SPEAKER_B"
-              ],
-              "assigned_speakers": [
-                "SPEAKER_A",
-                "SPEAKER_B"
-              ],
-              "error_codes": []
+            "nemo": {
+              "installed": false,
+              "importable": false,
+              "ready": false,
+              "issue_code": "DIARIZATION_BACKEND_UNAVAILABLE",
+              "recommended_actions": [
+                "Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`."
+              ]
+            },
+            "pyannote": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
             }
-          ]
+          },
+          "decode": {
+            "torchaudio": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ffmpeg_torchcodec": {
+              "installed": true,
+              "importable": false,
+              "ready": false,
+              "issue_code": "DIARIZATION_DECODE_UNAVAILABLE",
+              "recommended_actions": [
+                "Install system FFmpeg and verify `torchcodec` can import successfully."
+              ]
+            }
+          },
+          "alignment": {
+            "native_latin": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ja_kana": {
+              "installed": true,
+              "importable": true,
+              "ready": true,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "ja_reading_map": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "text_map": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": []
+            },
+            "romanizer": {
+              "installed": true,
+              "importable": true,
+              "ready": false,
+              "issue_code": null,
+              "recommended_actions": [
+                "Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages."
+              ]
+            }
+          }
+        }
+      },
+      "cases": [
+        {
+          "name": "gpu_auto_prefers_cuda",
+          "expectation": "actual_device=cuda without silent cpu fallback",
+          "blocked_reason": null,
+          "status": "success",
+          "error_code": null,
+          "error_category": null,
+          "requested_device": "auto",
+          "actual_device": "cuda",
+          "runtime_policy": "permissive",
+          "passed": true,
+          "residual_risk": null
         },
         {
-          "fixture": "d4_mix_3spk_01.wav",
-          "track_count": 3,
-          "backends": [
-            {
-              "backend": "pyannote",
-              "fixture": "d4_mix_3spk_01.wav",
-              "success": true,
-              "speaker_ids": [
-                "SPEAKER_A",
-                "SPEAKER_B",
-                "SPEAKER_C"
-              ],
-              "assigned_speakers": [
-                "SPEAKER_A",
-                "SPEAKER_B",
-                "SPEAKER_C"
-              ],
-              "error_codes": []
-            },
-            {
-              "backend": "nemo",
-              "fixture": "d4_mix_3spk_01.wav",
-              "success": true,
-              "speaker_ids": [
-                "SPEAKER_A",
-                "SPEAKER_B",
-                "SPEAKER_C"
-              ],
-              "assigned_speakers": [
-                "SPEAKER_A",
-                "SPEAKER_B",
-                "SPEAKER_C"
-              ],
-              "error_codes": []
-            }
-          ]
+          "name": "gpu_cuda_requires_gpu",
+          "expectation": "requested_device=cuda and actual_device=cuda",
+          "blocked_reason": null,
+          "status": "success",
+          "error_code": null,
+          "error_category": null,
+          "requested_device": "cuda",
+          "actual_device": "cuda",
+          "runtime_policy": "permissive",
+          "passed": true,
+          "residual_risk": null
+        },
+        {
+          "name": "gpu_strict_gpu_enforces_cuda",
+          "expectation": "strict-gpu must not silently fall back to cpu",
+          "blocked_reason": null,
+          "status": "success",
+          "error_code": null,
+          "error_category": null,
+          "requested_device": "auto",
+          "actual_device": "cuda",
+          "runtime_policy": "strict-gpu",
+          "passed": true,
+          "residual_risk": null
         }
       ],
+      "blocked": false,
+      "blocked_reasons": [],
+      "residual_risks": [],
       "all_passed": true
     },
-    "stdout": "{\n  \"report_version\": \"0.1\",\n  \"checks\": [\n    {\n      \"fixture\": \"d4_mix_01.wav\",\n      \"track_count\": 2,\n      \"backends\": [\n        {\n          \"backend\": \"pyannote\",\n          \"fixture\": \"d4_mix_01.wav\",\n          \"success\": true,\n          \"speaker_ids\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\"\n          ],\n          \"assigned_speakers\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\"\n          ],\n          \"error_codes\": []\n        },\n        {\n          \"backend\": \"nemo\",\n          \"fixture\": \"d4_mix_01.wav\",\n          \"success\": true,\n          \"speaker_ids\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\"\n          ],\n          \"assigned_speakers\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\"\n          ],\n          \"error_codes\": []\n        }\n      ]\n    },\n    {\n      \"fixture\": \"d4_mix_3spk_01.wav\",\n      \"track_count\": 3,\n      \"backends\": [\n        {\n          \"backend\": \"pyannote\",\n          \"fixture\": \"d4_mix_3spk_01.wav\",\n          \"success\": true,\n          \"speaker_ids\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\",\n            \"SPEAKER_C\"\n          ],\n          \"assigned_speakers\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\",\n            \"SPEAKER_C\"\n          ],\n          \"error_codes\": []\n        },\n        {\n          \"backend\": \"nemo\",\n          \"fixture\": \"d4_mix_3spk_01.wav\",\n          \"success\": true,\n          \"speaker_ids\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\",\n            \"SPEAKER_C\"\n          ],\n          \"assigned_speakers\": [\n            \"SPEAKER_A\",\n            \"SPEAKER_B\",\n            \"SPEAKER_C\"\n          ],\n          \"error_codes\": []\n        }\n      ]\n    }\n  ],\n  \"all_passed\": true\n}\n",
+    "stdout": "{\n  \"report_version\": \"0.1\",\n  \"doctor\": {\n    \"python_version\": \"3.12.3\",\n    \"platform\": \"Linux-6.6.87.1-microsoft-standard-WSL2-x86_64-with-glibc2.39\",\n    \"faster_whisper_available\": true,\n    \"ctranslate2_available\": true,\n    \"torch_available\": true,\n    \"torchaudio_available\": true,\n    \"torchcodec_available\": true,\n    \"torchcodec_importable\": false,\n    \"torch_cuda_available\": true,\n    \"nvidia_smi_available\": true,\n    \"ffmpeg_available\": true,\n    \"nvidia_summary\": \"NVIDIA GeForce RTX 3090, 595.79\",\n    \"hf_token_configured\": true,\n    \"diarization_backends\": [\n      \"none\",\n      \"channel\",\n      \"nemo\",\n      \"pyannote\"\n    ],\n    \"diarization_backend_available\": true,\n    \"nemo_backend_available\": false,\n    \"pyannote_backend_available\": true,\n    \"alignment_backend_available\": true,\n    \"diarization_ready\": true,\n    \"diarization_issue_code\": null,\n    \"nemo_ready\": false,\n    \"nemo_issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n    \"pyannote_ready\": true,\n    \"pyannote_issue_code\": null,\n    \"diarization_decode_ready\": true,\n    \"diarization_decode_backend\": \"torchaudio\",\n    \"alignment_ready\": true,\n    \"alignment_issue_code\": null,\n    \"alignment_romanizer_configured\": false,\n    \"alignment_text_map_configured\": false,\n    \"alignment_ja_reading_map_configured\": false,\n    \"alignment_map_issue_code\": null,\n    \"alignment_language_strategy\": \"torchaudio MMS_FA; OMEGA_ALIGNMENT_TEXT_MAP overrides tokens first; latin-script uses native tokens; ja uses built-in kana romanizer or OMEGA_ALIGNMENT_JA_READING_MAP; OMEGA_ALIGNMENT_ROMANIZER handles other non-latin languages; otherwise unsupported\",\n    \"pyannote_num_speakers\": null,\n    \"pyannote_min_speakers\": null,\n    \"pyannote_max_speakers\": null,\n    \"cache_dir\": \"/home/takanobu/.cache\",\n    \"cache_dir_writable\": true,\n    \"detected_device\": \"cuda\",\n    \"known_issue_codes\": [\n      \"DIARIZATION_BACKEND_UNAVAILABLE\"\n    ],\n    \"canonical_issue_codes\": [\n      \"GPU_UNAVAILABLE\",\n      \"DEPENDENCY_MISSING\",\n      \"OUTPUT_PERMISSION_DENIED\",\n      \"AUDIO_DECODE_FAILURE\",\n      \"INTERNAL_ERROR\",\n      \"CONFIG_INVALID\",\n      \"ALIGNMENT_BACKEND_UNAVAILABLE\",\n      \"ALIGNMENT_MODEL_UNAVAILABLE\",\n      \"ALIGNMENT_LANGUAGE_UNSUPPORTED\",\n      \"ALIGNMENT_TEXT_UNAVAILABLE\",\n      \"ALIGNMENT_TEXT_UNSUPPORTED\",\n      \"ALIGNMENT_RUNTIME_FAILURE\",\n      \"ALIGNMENT_TEXT_MAP_INVALID\",\n      \"DIARIZATION_BACKEND_UNAVAILABLE\",\n      \"DIARIZATION_DECODE_UNAVAILABLE\",\n      \"HF_TOKEN_MISSING\",\n      \"DIARIZATION_AUTH_FAILURE\",\n      \"DIARIZATION_MODEL_UNAVAILABLE\",\n      \"DIARIZATION_DECODE_FAILURE\",\n      \"DIARIZATION_CHANNELS_UNAVAILABLE\",\n      \"DIARIZATION_CHANNEL_AMBIGUOUS\",\n      \"DIARIZATION_AUDIO_UNSUPPORTED\",\n      \"NEMO_MODEL_UNAVAILABLE\",\n      \"NEMO_RUNTIME_FAILURE\",\n      \"NEMO_OUTPUT_MISSING\"\n    ],\n    \"recommended_actions\": [\n      \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n    ],\n    \"backend_statuses\": {\n      \"diarization\": {\n        \"channel\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"nemo\": {\n          \"installed\": false,\n          \"importable\": false,\n          \"ready\": false,\n          \"issue_code\": \"DIARIZATION_BACKEND_UNAVAILABLE\",\n          \"recommended_actions\": [\n            \"Install an optional diarization backend such as `.[diarize]` or `.[diarize-nemo]`.\"\n          ]\n        },\n        \"pyannote\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        }\n      },\n      \"decode\": {\n        \"torchaudio\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ffmpeg_torchcodec\": {\n          \"installed\": true,\n          \"importable\": false,\n          \"ready\": false,\n          \"issue_code\": \"DIARIZATION_DECODE_UNAVAILABLE\",\n          \"recommended_actions\": [\n            \"Install system FFmpeg and verify `torchcodec` can import successfully.\"\n          ]\n        }\n      },\n      \"alignment\": {\n        \"native_latin\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ja_kana\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": true,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"ja_reading_map\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"text_map\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": []\n        },\n        \"romanizer\": {\n          \"installed\": true,\n          \"importable\": true,\n          \"ready\": false,\n          \"issue_code\": null,\n          \"recommended_actions\": [\n            \"Set `OMEGA_ALIGNMENT_ROMANIZER` to enable other non-latin languages.\"\n          ]\n        }\n      }\n    }\n  },\n  \"cases\": [\n    {\n      \"name\": \"gpu_auto_prefers_cuda\",\n      \"expectation\": \"actual_device=cuda without silent cpu fallback\",\n      \"blocked_reason\": null,\n      \"status\": \"success\",\n      \"error_code\": null,\n      \"error_category\": null,\n      \"requested_device\": \"auto\",\n      \"actual_device\": \"cuda\",\n      \"runtime_policy\": \"permissive\",\n      \"passed\": true,\n      \"residual_risk\": null\n    },\n    {\n      \"name\": \"gpu_cuda_requires_gpu\",\n      \"expectation\": \"requested_device=cuda and actual_device=cuda\",\n      \"blocked_reason\": null,\n      \"status\": \"success\",\n      \"error_code\": null,\n      \"error_category\": null,\n      \"requested_device\": \"cuda\",\n      \"actual_device\": \"cuda\",\n      \"runtime_policy\": \"permissive\",\n      \"passed\": true,\n      \"residual_risk\": null\n    },\n    {\n      \"name\": \"gpu_strict_gpu_enforces_cuda\",\n      \"expectation\": \"strict-gpu must not silently fall back to cpu\",\n      \"blocked_reason\": null,\n      \"status\": \"success\",\n      \"error_code\": null,\n      \"error_category\": null,\n      \"requested_device\": \"auto\",\n      \"actual_device\": \"cuda\",\n      \"runtime_policy\": \"strict-gpu\",\n      \"passed\": true,\n      \"residual_risk\": null\n    }\n  ],\n  \"blocked\": false,\n  \"blocked_reasons\": [],\n  \"residual_risks\": [],\n  \"all_passed\": true\n}\n",
     "stderr": ""
-  },
-  "pyannote_acceptance": null,
-  "nemo_acceptance": null,
-  "gpu_acceptance": null
+  }
 }

@@ -30,6 +30,7 @@
 
 - case 1: `HF_TOKEN` なしで `HF_TOKEN_MISSING` を機械可読に返す
 - case 2: `HF_TOKEN` あり + speaker hint 設定で success を狙う
+- Hugging Face 側では `pyannote/speaker-diarization-3.1`、`pyannote/segmentation-3.0`、`pyannote/speaker-diarization-community-1` の利用条件承認が必要になることがある
 - 前提不足時は `blocked=true` と `blocked_reasons` を返し、終了コード `2` で止まる
 
 ## 実施済み
