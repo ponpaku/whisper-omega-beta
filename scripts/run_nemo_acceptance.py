@@ -35,6 +35,20 @@ def _write_smoke_wav(path: Path) -> None:
         wav_file.writeframes(b"".join(int(sample).to_bytes(2, "little", signed=True) for sample in samples))
 
 
+def _resolve_nemo_acceptance_audio(tmpdir: str) -> Path:
+    candidates = [
+        ROOT / "fixtures" / "d4_diarization" / "d4_mix_01.wav",
+        ROOT / "fixtures" / "d2_short_en" / "12952903060751652532.wav",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+
+    audio_path = Path(tmpdir) / "nemo_acceptance.wav"
+    _write_smoke_wav(audio_path)
+    return audio_path
+
+
 @contextmanager
 def _temporary_env(updates: dict[str, str | None]):
     original = {key: os.environ.get(key) for key in updates}
@@ -86,8 +100,7 @@ def build_nemo_acceptance_report() -> dict:
         blocked_reasons.append("DIARIZATION_BACKEND_UNAVAILABLE")
 
     with tempfile.TemporaryDirectory(prefix="omega-nemo-acceptance-") as tmpdir:
-        audio_path = Path(tmpdir) / "nemo_acceptance.wav"
-        _write_smoke_wav(audio_path)
+        audio_path = _resolve_nemo_acceptance_audio(tmpdir)
 
         base_kwargs = {
             "audio_path": audio_path,

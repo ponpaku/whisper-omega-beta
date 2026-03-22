@@ -1,13 +1,30 @@
 from __future__ import annotations
 
+import importlib.util
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from scripts.run_nemo_acceptance import build_nemo_acceptance_report
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "run_nemo_acceptance.py"
+SPEC = importlib.util.spec_from_file_location("run_nemo_acceptance", MODULE_PATH)
+assert SPEC is not None and SPEC.loader is not None
+run_nemo_acceptance = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(run_nemo_acceptance)
+
+_resolve_nemo_acceptance_audio = run_nemo_acceptance._resolve_nemo_acceptance_audio
+build_nemo_acceptance_report = run_nemo_acceptance.build_nemo_acceptance_report
 
 
 class NemoAcceptanceTests(unittest.TestCase):
+    def test_resolve_nemo_acceptance_audio_prefers_fixture(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            with patch("pathlib.Path.is_file", return_value=True):
+                resolved = _resolve_nemo_acceptance_audio(tmpdir)
+
+        self.assertTrue(str(resolved).endswith("fixtures/d4_diarization/d4_mix_01.wav"))
+
     def test_report_blocks_when_nemo_is_missing(self) -> None:
         doctor = {
             "faster_whisper_available": True,
@@ -16,7 +33,7 @@ class NemoAcceptanceTests(unittest.TestCase):
             },
         }
 
-        with patch("scripts.run_nemo_acceptance.DoctorReport.collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
+        with patch.object(run_nemo_acceptance.DoctorReport, "collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
             report = build_nemo_acceptance_report()
 
         self.assertTrue(report["blocked"])
@@ -34,8 +51,8 @@ class NemoAcceptanceTests(unittest.TestCase):
             SimpleNamespace(status="success", error_code=None, error_category=None, speakers=[object()]),
         ]
 
-        with patch("scripts.run_nemo_acceptance.DoctorReport.collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
-            with patch("scripts.run_nemo_acceptance.transcribe_file", side_effect=results):
+        with patch.object(run_nemo_acceptance.DoctorReport, "collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
+            with patch.object(run_nemo_acceptance, "transcribe_file", side_effect=results):
                 report = build_nemo_acceptance_report()
 
         self.assertFalse(report["blocked"])
@@ -55,8 +72,8 @@ class NemoAcceptanceTests(unittest.TestCase):
             SimpleNamespace(status="failure", error_code="NEMO_MODEL_UNAVAILABLE", error_category="backend", speakers=[]),
         ]
 
-        with patch("scripts.run_nemo_acceptance.DoctorReport.collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
-            with patch("scripts.run_nemo_acceptance.transcribe_file", side_effect=results):
+        with patch.object(run_nemo_acceptance.DoctorReport, "collect", return_value=SimpleNamespace(to_dict=lambda: doctor)):
+            with patch.object(run_nemo_acceptance, "transcribe_file", side_effect=results):
                 report = build_nemo_acceptance_report()
 
         self.assertFalse(report["blocked"])

@@ -10,7 +10,12 @@ from unittest.mock import patch
 
 import torch
 
-from whisper_omega.diarize.base import ChannelDiarizationBackend, NemoDiarizationBackend, UnavailablePyannoteBackend
+from whisper_omega.diarize.base import (
+    ChannelDiarizationBackend,
+    NemoDiarizationBackend,
+    UnavailablePyannoteBackend,
+    _build_nemo_config,
+)
 from whisper_omega.runtime.models import Segment, Word
 
 
@@ -421,6 +426,38 @@ class DiarizeTests(unittest.TestCase):
             )
 
         self.assertEqual(outcome.backend_errors[0].code, "NEMO_OUTPUT_MISSING")
+
+    def test_nemo_config_includes_runtime_defaults(self) -> None:
+        class FakeOmegaConf:
+            @staticmethod
+            def create(data):
+                return data
+
+            @staticmethod
+            def merge(base, override):
+                merged = dict(base)
+                merged.update(override)
+                return merged
+
+            @staticmethod
+            def load(path):
+                _ = path
+                return {}
+
+        config = _build_nemo_config(FakeOmegaConf, "manifest.json", "out", device="cpu")
+
+        self.assertEqual(config["device"], "cpu")
+        self.assertEqual(config["sample_rate"], 16000)
+        self.assertEqual(config["batch_size"], 1)
+        self.assertEqual(config["num_workers"], 0)
+        self.assertFalse(config["verbose"])
+        self.assertFalse(config["diarizer"]["clustering"]["parameters"]["oracle_num_speakers"])
+        self.assertEqual(config["diarizer"]["clustering"]["parameters"]["max_num_speakers"], 8)
+        self.assertEqual(config["diarizer"]["clustering"]["parameters"]["max_rp_threshold"], 0.25)
+        self.assertEqual(config["diarizer"]["clustering"]["parameters"]["sparse_search_volume"], 30)
+        self.assertEqual(config["diarizer"]["vad"]["parameters"]["onset"], 0.5)
+        self.assertEqual(config["diarizer"]["vad"]["parameters"]["offset"], 0.5)
+        self.assertTrue(config["diarizer"]["vad"]["parameters"]["filter_speech_first"])
 
 
 if __name__ == "__main__":

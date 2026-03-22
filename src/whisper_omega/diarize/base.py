@@ -174,7 +174,7 @@ class NemoDiarizationBackend(DiarizationBackend):
                 out_dir = os.path.join(tmp_root, "out")
                 os.makedirs(out_dir, exist_ok=True)
                 _write_nemo_manifest(audio_path, manifest_path)
-                config = _build_nemo_config(OmegaConf, manifest_path, out_dir)
+                config = _build_nemo_config(OmegaConf, manifest_path, out_dir, device=os.environ.get("OMEGA_DEVICE", "cpu"))
                 diarizer = ClusteringDiarizer(cfg=config)
                 diarizer.diarize(paths2audio_files=[audio_path], batch_size=1)
                 speaker_turns = _parse_nemo_rttm(out_dir, audio_path)
@@ -448,8 +448,18 @@ def _write_nemo_manifest(audio_path: str, manifest_path: str) -> None:
         handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
 
-def _build_nemo_config(omegaconf, manifest_path: str, out_dir: str):
+def _build_nemo_config(omegaconf, manifest_path: str, out_dir: str, device: str = "cpu"):
+    num_speakers = _nemo_num_speakers()
+    max_speakers = _nemo_max_speakers()
+    if num_speakers is not None:
+        max_speakers = min(max_speakers, num_speakers)
+
     config_data = {
+        "device": device,
+        "sample_rate": 16000,
+        "batch_size": 1,
+        "num_workers": 0,
+        "verbose": False,
         "diarizer": {
             "manifest_filepath": manifest_path,
             "out_dir": out_dir,
@@ -464,6 +474,14 @@ def _build_nemo_config(omegaconf, manifest_path: str, out_dir: str):
                     "shift_length_in_sec": 0.01,
                     "smoothing": "median",
                     "overlap": 0.875,
+                    "onset": 0.5,
+                    "offset": 0.5,
+                    "pad_onset": 0.0,
+                    "pad_offset": 0.0,
+                    "min_duration_on": 0.0,
+                    "min_duration_off": 0.0,
+                    "filter_speech_first": True,
+                    "scale": "absolute",
                 },
             },
             "speaker_embeddings": {
@@ -477,8 +495,10 @@ def _build_nemo_config(omegaconf, manifest_path: str, out_dir: str):
             },
             "clustering": {
                 "parameters": {
-                    "oracle_num_speakers": _nemo_num_speakers() is not None,
-                    "max_num_speakers": _nemo_max_speakers(),
+                    "oracle_num_speakers": False,
+                    "max_num_speakers": max_speakers,
+                    "max_rp_threshold": 0.25,
+                    "sparse_search_volume": 30,
                 }
             },
         }
