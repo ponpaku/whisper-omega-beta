@@ -129,7 +129,7 @@ def main() -> None:
     show_default=True,
 )
 @click.option("--write-failure-json", is_flag=True, default=False)
-@click.option("--diarize-backend", type=click.Choice(["none", "pyannote"]), default="none", show_default=True)
+@click.option("--diarize-backend", type=click.Choice(["none", "channel", "pyannote"]), default="none", show_default=True)
 @click.option("--align-backend", type=click.Choice(["none", "wav2vec2"]), default="none", show_default=True)
 @click.option("--batch-size", type=int)
 def transcribe(
@@ -286,13 +286,14 @@ def setup_diarize() -> None:
     lines = [
         "Diarization setup path:",
         "1. python3 -m pip install -e .",
-        "2. python3 -m pip install '.[diarize]'",
-        "3. Prefer torchaudio for audio decode; otherwise ensure ffmpeg+torchcodec is available",
-        "4. export HF_TOKEN=...",
-        "5. Optional: export OMEGA_PYANNOTE_NUM_SPEAKERS=2 or MIN/MAX speaker hints",
-        "6. omega doctor",
-        "7. Expect failures to classify as HF_TOKEN_MISSING / DIARIZATION_AUTH_FAILURE / DIARIZATION_MODEL_UNAVAILABLE / DIARIZATION_DECODE_FAILURE / CONFIG_INVALID",
-        "8. omega transcribe sample.wav --require-diarization --diarize-backend pyannote --emit-result-json always",
+        "2. For built-in stereo channel diarization, use omega transcribe sample.wav --require-diarization --diarize-backend channel",
+        "3. python3 -m pip install '.[diarize]'",
+        "4. Prefer torchaudio for audio decode; otherwise ensure ffmpeg+torchcodec is available",
+        "5. export HF_TOKEN=...",
+        "6. Optional: export OMEGA_PYANNOTE_NUM_SPEAKERS=2 or MIN/MAX speaker hints",
+        "7. omega doctor",
+        "8. Expect pyannote failures to classify as HF_TOKEN_MISSING / DIARIZATION_AUTH_FAILURE / DIARIZATION_MODEL_UNAVAILABLE / DIARIZATION_DECODE_FAILURE / CONFIG_INVALID",
+        "9. omega transcribe sample.wav --require-diarization --diarize-backend pyannote --emit-result-json always",
     ]
     click.echo("\n".join(lines))
 

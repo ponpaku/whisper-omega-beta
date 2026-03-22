@@ -13,6 +13,7 @@
 - runtime policy: `permissive`, `strict`, `strict-gpu`
 - optional `faster-whisper` integration when installed
 - optional `torchaudio` forced alignment integration when installed
+- built-in stereo `channel` diarization backend for wav inputs
 - optional `pyannote.audio` diarization integration when installed and configured
 - WhisperX compatibility mapping for `--model`, `--device`, `--language`, `--batch_size`, `--output_format`, `--diarize`, `--align_model`, `--hf_token`, and `--highlight_words`
 
@@ -44,9 +45,10 @@ Optional extras:
 .venv-system/bin/python -m pip install '.[validation]' --no-build-isolation
 ```
 
+For zero-extra-dependency diarization on stereo wav files, run `omega transcribe --require-diarization --diarize-backend channel ...`. This backend assigns `CHANNEL_LEFT` / `CHANNEL_RIGHT` speakers from per-channel energy and is useful when each speaker is isolated to one stereo side.
 For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`. The backend prefers in-memory waveform loading via `torchaudio` when available, which helps avoid some decode-stack issues. You can also provide `OMEGA_PYANNOTE_NUM_SPEAKERS`, `OMEGA_PYANNOTE_MIN_SPEAKERS`, or `OMEGA_PYANNOTE_MAX_SPEAKERS` to constrain the diarization search space.
 Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; if `torchaudio` is unavailable, fall back to `ffmpeg` + `torchcodec`.
-Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID`.
+Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` for pyannote, plus `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` for the built-in channel backend.
 The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `--align_model` to alignment-required execution.
 For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
 Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.
@@ -96,7 +98,7 @@ Compatibility handling rules are:
 - Real transcription requires the optional `faster-whisper` dependency.
 - Without it, `omega transcribe` returns a machine-readable dependency failure instead of crashing.
 - `omega doctor` now reports known issue codes and recommended actions for missing runtime pieces.
-- `omega doctor` also reports whether alignment maps and pyannote speaker-hint env vars are configured.
+- `omega doctor` also reports available diarization backends, pyannote readiness, and whether alignment maps and pyannote speaker-hint env vars are configured.
 - `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
 - `scripts/run_alignment_smoke.py` runs fixture-backed alignment routing checks for `D1_SHORT_JA` and `D2_SHORT_EN`.
 - `scripts/run_diarization_smoke.py` runs fixture-backed diarization assignment checks for the current D4 mixes.

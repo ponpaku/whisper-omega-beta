@@ -113,10 +113,14 @@ class ContractTests(unittest.TestCase):
             "torch_cuda_available",
             "ffmpeg_available",
             "hf_token_configured",
+            "diarization_backends",
             "diarization_backend_available",
+            "pyannote_backend_available",
             "alignment_backend_available",
             "diarization_ready",
             "diarization_issue_code",
+            "pyannote_ready",
+            "pyannote_issue_code",
             "diarization_decode_ready",
             "diarization_decode_backend",
             "alignment_ready",
@@ -156,6 +160,7 @@ class ContractTests(unittest.TestCase):
 
         self.assertTrue(report["diarization_decode_ready"])
         self.assertEqual(report["diarization_decode_backend"], "torchaudio")
+        self.assertIn("channel", report["diarization_backends"])
 
     def test_doctor_reports_alignment_maps_and_speaker_hints(self) -> None:
         with patch.dict(

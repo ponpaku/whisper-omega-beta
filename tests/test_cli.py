@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest.mock import patch
 
@@ -32,6 +33,25 @@ class StubBackend(ASRBackend):
             language=language or "en",
             segments=[Segment(id=0, start=0.0, end=1.0, text="hello world", speaker=None)],
             words=[Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
+        )
+
+
+class StereoTimedStubBackend(ASRBackend):
+    name = "stub"
+
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
+        _ = (audio_path, model_name, language, device, batch_size)
+        return BackendTranscription(
+            text="left right",
+            language="en",
+            segments=[
+                Segment(id=0, start=0.0, end=0.45, text="left", speaker=None),
+                Segment(id=1, start=0.55, end=1.0, text="right", speaker=None),
+            ],
+            words=[
+                Word(text="left", start=0.0, end=0.45, speaker=None, confidence=0.9),
+                Word(text="right", start=0.55, end=1.0, speaker=None, confidence=0.9),
+            ],
         )
 
 
@@ -100,6 +120,24 @@ class CliTests(unittest.TestCase):
         else:
             os.environ.pop("HF_TOKEN", None)
         self.tmpdir.cleanup()
+
+    def _write_stereo_wav(self, name: str) -> Path:
+        path = Path(self.tmpdir.name) / name
+        sample_rate = 8000
+        frames = bytearray()
+        for index in range(sample_rate):
+            if index < sample_rate // 2:
+                left, right = 20000, 500
+            else:
+                left, right = 500, 20000
+            frames.extend(int(left).to_bytes(2, byteorder="little", signed=True))
+            frames.extend(int(right).to_bytes(2, byteorder="little", signed=True))
+        with wave.open(str(path), "wb") as handle:
+            handle.setnchannels(2)
+            handle.setsampwidth(2)
+            handle.setframerate(sample_rate)
+            handle.writeframes(bytes(frames))
+        return path
 
     def test_transcribe_emits_json_and_exit_zero(self) -> None:
         with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
@@ -470,6 +508,47 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("--highlight_words is accepted for compatibility", result.output)
 
+    def test_transcribe_accepts_channel_diarization_backend(self) -> None:
+        stereo_path = self._write_stereo_wav("stereo.wav")
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    required_features=["diarization"],
+                    diarize_backend="channel",
+                ),
+                asr_backend=StereoTimedStubBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(stereo_path),
+                    "--device",
+                    "cpu",
+                    "--require-diarization",
+                    "--diarize-backend",
+                    "channel",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["status"], "success")
+        self.assertEqual(payload["metadata"]["diarization_backend"], "channel")
+        self.assertEqual(payload["segments"][0]["speaker"], "CHANNEL_LEFT")
+        self.assertEqual(payload["segments"][1]["speaker"], "CHANNEL_RIGHT")
+
     def test_setup_align_lists_alignment_steps(self) -> None:
         result = self.runner.invoke(main, ["setup", "align"])
 
@@ -496,6 +575,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Diarization setup path:", result.output)
+        self.assertIn("--diarize-backend channel", result.output)
         self.assertIn("HF_TOKEN", result.output)
         self.assertIn("ffmpeg", result.output.lower())
 

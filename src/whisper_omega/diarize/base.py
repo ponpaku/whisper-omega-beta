@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import importlib.util
 import os
 from typing import Iterable
+import wave
 
 from whisper_omega.runtime.models import BackendError, Segment, Speaker, Word
 
@@ -31,6 +32,97 @@ class NoopDiarizationBackend(DiarizationBackend):
 
     def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
         return DiarizationOutcome(segments=segments, words=words, speakers=[])
+
+
+@dataclass(slots=True)
+class _StereoChannelAnalysis:
+    sample_rate: int
+    duration: float
+    left_prefix: list[float]
+    right_prefix: list[float]
+
+
+class _ChannelValidationError(ValueError):
+    pass
+
+
+class _ChannelRuntimeError(RuntimeError):
+    pass
+
+
+class ChannelDiarizationBackend(DiarizationBackend):
+    name = "channel"
+
+    def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
+        audio_path = os.environ.get("OMEGA_AUDIO_PATH")
+        if not audio_path:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="CONFIG_INVALID",
+                category="configuration",
+                message="OMEGA_AUDIO_PATH is required for channel diarization",
+                retryable=False,
+            )
+
+        try:
+            analysis = _load_stereo_channel_analysis(audio_path)
+        except _ChannelValidationError as exc:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="DIARIZATION_CHANNELS_UNAVAILABLE",
+                category="validation",
+                message=str(exc),
+                retryable=False,
+            )
+        except _ChannelRuntimeError as exc:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="DIARIZATION_AUDIO_UNSUPPORTED",
+                category="runtime",
+                message=str(exc),
+                retryable=False,
+            )
+
+        assigned_segments = [
+            _with_speaker(segment, _speaker_for_stereo_interval(segment.start, segment.end, analysis))
+            for segment in segments
+        ]
+        assigned_words = [
+            _with_word_speaker(word, _speaker_for_stereo_interval(word.start, word.end, analysis))
+            for word in words
+        ]
+        used_speakers = {
+            speaker
+            for speaker in [*(segment.speaker for segment in assigned_segments), *(word.speaker for word in assigned_words)]
+            if speaker is not None
+        }
+        if not used_speakers:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="DIARIZATION_CHANNEL_AMBIGUOUS",
+                category="validation",
+                message="channel diarization could not confidently assign a speaker from stereo energy",
+                retryable=False,
+            )
+
+        speakers = [
+            Speaker(id=speaker_id, start=0.0, end=analysis.duration, label=_channel_label(speaker_id))
+            for speaker_id in ("CHANNEL_LEFT", "CHANNEL_RIGHT")
+            if speaker_id in used_speakers
+        ]
+        return DiarizationOutcome(
+            segments=assigned_segments,
+            words=assigned_words,
+            speakers=speakers,
+        )
 
 
 class UnavailablePyannoteBackend(DiarizationBackend):
@@ -214,6 +306,79 @@ def _classify_pyannote_exception(exc: Exception) -> tuple[str, str]:
     return ("DIARIZATION_BACKEND_UNAVAILABLE", "backend")
 
 
+def _load_stereo_channel_analysis(audio_path: str) -> _StereoChannelAnalysis:
+    try:
+        with wave.open(audio_path, "rb") as handle:
+            channel_count = handle.getnchannels()
+            sample_width = handle.getsampwidth()
+            sample_rate = handle.getframerate()
+            frame_count = handle.getnframes()
+            frame_bytes = handle.readframes(frame_count)
+    except (FileNotFoundError, wave.Error, OSError) as exc:
+        raise _ChannelRuntimeError(f"could not read stereo audio for channel diarization: {exc}") from exc
+
+    if channel_count < 2:
+        raise _ChannelValidationError("channel diarization requires a stereo wav input")
+    if sample_width not in (1, 2, 3, 4):
+        raise _ChannelRuntimeError("channel diarization only supports PCM wav sample widths up to 32-bit")
+    if sample_rate <= 0:
+        raise _ChannelRuntimeError("channel diarization requires a positive sample rate")
+
+    frame_width = channel_count * sample_width
+    left_prefix = [0.0]
+    right_prefix = [0.0]
+    for offset in range(0, len(frame_bytes), frame_width):
+        frame = frame_bytes[offset : offset + frame_width]
+        if len(frame) < frame_width:
+            break
+        left_sample = _pcm_sample_to_float(frame[0:sample_width], sample_width)
+        right_sample = _pcm_sample_to_float(frame[sample_width : sample_width * 2], sample_width)
+        left_prefix.append(left_prefix[-1] + abs(left_sample))
+        right_prefix.append(right_prefix[-1] + abs(right_sample))
+
+    duration = frame_count / sample_rate if frame_count else 0.0
+    return _StereoChannelAnalysis(
+        sample_rate=sample_rate,
+        duration=duration,
+        left_prefix=left_prefix,
+        right_prefix=right_prefix,
+    )
+
+
+def _pcm_sample_to_float(data: bytes, sample_width: int) -> float:
+    if sample_width == 1:
+        return float(data[0] - 128)
+    return float(int.from_bytes(data, byteorder="little", signed=True))
+
+
+def _speaker_for_stereo_interval(start: float, end: float, analysis: _StereoChannelAnalysis) -> str | None:
+    left_energy = _interval_energy(analysis.left_prefix, analysis.sample_rate, start, end)
+    right_energy = _interval_energy(analysis.right_prefix, analysis.sample_rate, start, end)
+    strongest = max(left_energy, right_energy)
+    if strongest <= 0:
+        return None
+    if abs(left_energy - right_energy) / strongest < 0.1:
+        return None
+    if left_energy > right_energy:
+        return "CHANNEL_LEFT"
+    return "CHANNEL_RIGHT"
+
+
+def _interval_energy(prefix: list[float], sample_rate: int, start: float, end: float) -> float:
+    if len(prefix) <= 1:
+        return 0.0
+    frame_count = len(prefix) - 1
+    start_index = max(0, min(frame_count - 1, int(start * sample_rate)))
+    end_index = max(start_index + 1, min(frame_count, int(end * sample_rate)))
+    return prefix[end_index] - prefix[start_index]
+
+
+def _channel_label(speaker_id: str) -> str:
+    if speaker_id == "CHANNEL_LEFT":
+        return "Left channel"
+    return "Right channel"
+
+
 def _speaker_for_interval(start: float, end: float, speaker_turns: list[tuple[float, float, str]]) -> str | None:
     midpoint = (start + end) / 2
     best_overlap = 0.0
@@ -245,4 +410,30 @@ def _with_word_speaker(word: Word, speaker: str | None) -> Word:
         end=word.end,
         speaker=speaker,
         confidence=word.confidence,
+    )
+
+
+def _failure_outcome(
+    backend: str,
+    segments: list[Segment],
+    words: list[Word],
+    *,
+    code: str,
+    category: str,
+    message: str,
+    retryable: bool,
+) -> DiarizationOutcome:
+    return DiarizationOutcome(
+        segments=segments,
+        words=words,
+        speakers=[],
+        backend_errors=[
+            BackendError(
+                backend=backend,
+                code=code,
+                category=category,
+                message=message,
+                retryable=retryable,
+            )
+        ],
     )

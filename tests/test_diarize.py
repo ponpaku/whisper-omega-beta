@@ -3,11 +3,14 @@ from __future__ import annotations
 import os
 import types
 import unittest
+import wave
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import torch
 
-from whisper_omega.diarize.base import UnavailablePyannoteBackend
+from whisper_omega.diarize.base import ChannelDiarizationBackend, UnavailablePyannoteBackend
 from whisper_omega.runtime.models import Segment, Word
 
 
@@ -18,6 +21,7 @@ class DiarizeTests(unittest.TestCase):
         self.original_num_speakers = os.environ.pop("OMEGA_PYANNOTE_NUM_SPEAKERS", None)
         self.original_min_speakers = os.environ.pop("OMEGA_PYANNOTE_MIN_SPEAKERS", None)
         self.original_max_speakers = os.environ.pop("OMEGA_PYANNOTE_MAX_SPEAKERS", None)
+        self.tmpdir = TemporaryDirectory()
 
     def tearDown(self) -> None:
         if self.original_hf_token is not None:
@@ -30,6 +34,38 @@ class DiarizeTests(unittest.TestCase):
             os.environ["OMEGA_PYANNOTE_MIN_SPEAKERS"] = self.original_min_speakers
         if self.original_max_speakers is not None:
             os.environ["OMEGA_PYANNOTE_MAX_SPEAKERS"] = self.original_max_speakers
+        self.tmpdir.cleanup()
+
+    def _write_stereo_wav(self, name: str) -> Path:
+        path = Path(self.tmpdir.name) / name
+        sample_rate = 8000
+        frames = bytearray()
+        for index in range(sample_rate):
+            if index < sample_rate // 2:
+                left, right = 20000, 500
+            else:
+                left, right = 500, 20000
+            frames.extend(int(left).to_bytes(2, byteorder="little", signed=True))
+            frames.extend(int(right).to_bytes(2, byteorder="little", signed=True))
+        with wave.open(str(path), "wb") as handle:
+            handle.setnchannels(2)
+            handle.setsampwidth(2)
+            handle.setframerate(sample_rate)
+            handle.writeframes(bytes(frames))
+        return path
+
+    def _write_mono_wav(self, name: str) -> Path:
+        path = Path(self.tmpdir.name) / name
+        sample_rate = 8000
+        frames = bytearray()
+        for _ in range(sample_rate):
+            frames.extend(int(12000).to_bytes(2, byteorder="little", signed=True))
+        with wave.open(str(path), "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(sample_rate)
+            handle.writeframes(bytes(frames))
+        return path
 
     def test_missing_token_is_configuration_error(self) -> None:
         fake_pipeline = types.SimpleNamespace(Pipeline=object)
@@ -207,6 +243,36 @@ class DiarizeTests(unittest.TestCase):
 
         self.assertEqual(outcome.backend_errors[0].code, "DIARIZATION_DECODE_FAILURE")
         self.assertEqual(outcome.backend_errors[0].category, "runtime")
+
+    def test_channel_backend_assigns_left_and_right_speakers(self) -> None:
+        os.environ["OMEGA_AUDIO_PATH"] = str(self._write_stereo_wav("stereo.wav"))
+
+        outcome = ChannelDiarizationBackend().diarize(
+            [
+                Segment(id=0, start=0.0, end=0.45, text="left", speaker=None),
+                Segment(id=1, start=0.55, end=1.0, text="right", speaker=None),
+            ],
+            [
+                Word(text="left", start=0.0, end=0.45, speaker=None, confidence=0.9),
+                Word(text="right", start=0.55, end=1.0, speaker=None, confidence=0.9),
+            ],
+        )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.segments[0].speaker, "CHANNEL_LEFT")
+        self.assertEqual(outcome.segments[1].speaker, "CHANNEL_RIGHT")
+        self.assertEqual({speaker.id for speaker in outcome.speakers}, {"CHANNEL_LEFT", "CHANNEL_RIGHT"})
+
+    def test_channel_backend_rejects_mono_audio(self) -> None:
+        os.environ["OMEGA_AUDIO_PATH"] = str(self._write_mono_wav("mono.wav"))
+
+        outcome = ChannelDiarizationBackend().diarize(
+            [Segment(id=0, start=0.0, end=1.0, text="mono", speaker=None)],
+            [Word(text="mono", start=0.0, end=1.0, speaker=None, confidence=0.9)],
+        )
+
+        self.assertEqual(outcome.backend_errors[0].code, "DIARIZATION_CHANNELS_UNAVAILABLE")
+        self.assertEqual(outcome.backend_errors[0].category, "validation")
 
 
 if __name__ == "__main__":

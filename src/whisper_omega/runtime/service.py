@@ -12,7 +12,12 @@ from pathlib import Path
 from whisper_omega.align.base import AlignmentBackend, NoopAlignmentBackend, Wav2Vec2AlignmentBackend
 from whisper_omega.asr.base import ASRBackend
 from whisper_omega.asr.faster_whisper_backend import FasterWhisperBackend, dependency_error
-from whisper_omega.diarize.base import DiarizationBackend, NoopDiarizationBackend, UnavailablePyannoteBackend
+from whisper_omega.diarize.base import (
+    ChannelDiarizationBackend,
+    DiarizationBackend,
+    NoopDiarizationBackend,
+    UnavailablePyannoteBackend,
+)
 from whisper_omega.io.writers import write_json, write_srt, write_txt, write_vtt
 from whisper_omega.runtime.models import BackendError, Fallback, Metadata, TranscriptionResult
 from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device
@@ -254,6 +259,8 @@ class TranscriptionService:
     def _make_diarization_backend(name: str) -> DiarizationBackend:
         if name == "pyannote":
             return UnavailablePyannoteBackend()
+        if name == "channel":
+            return ChannelDiarizationBackend()
         return NoopDiarizationBackend()
 
     def _failure_result(
@@ -317,10 +324,14 @@ class DoctorReport:
     ffmpeg_available: bool
     nvidia_summary: str
     hf_token_configured: bool
+    diarization_backends: list[str]
     diarization_backend_available: bool
+    pyannote_backend_available: bool
     alignment_backend_available: bool
     diarization_ready: bool
     diarization_issue_code: str | None
+    pyannote_ready: bool
+    pyannote_issue_code: str | None
     diarization_decode_ready: bool
     diarization_decode_backend: str
     alignment_ready: bool
@@ -345,13 +356,17 @@ class DoctorReport:
         torch_available = _module_available("torch")
         torchaudio_available = _module_available("torchaudio")
         torchcodec_available = _module_available("torchcodec")
-        diarization_backend = UnavailablePyannoteBackend()
+        diarization_backend = ChannelDiarizationBackend()
+        pyannote_backend = UnavailablePyannoteBackend()
         alignment_backend = Wav2Vec2AlignmentBackend()
-        diarization_backend_available = _module_available("pyannote.audio")
+        diarization_backends = ["none", "channel", "pyannote"]
+        diarization_backend_available = True
+        pyannote_backend_available = _module_available("pyannote.audio")
         alignment_backend_available = torchaudio_available
         ffmpeg_available = shutil.which("ffmpeg") is not None
         torchcodec_importable = torchcodec_available and ffmpeg_available and _module_importable("torchcodec")
         diarization_ready, diarization_issue_code = diarization_backend.capability()
+        pyannote_ready, pyannote_issue_code = pyannote_backend.capability()
         diarization_decode_ready = False
         diarization_decode_backend = "none"
         if torchaudio_available:
@@ -360,9 +375,9 @@ class DoctorReport:
         elif ffmpeg_available and torchcodec_importable:
             diarization_decode_ready = True
             diarization_decode_backend = "ffmpeg+torchcodec"
-        if diarization_ready and not diarization_decode_ready:
-            diarization_ready = False
-            diarization_issue_code = "DIARIZATION_DECODE_UNAVAILABLE"
+        if pyannote_ready and not diarization_decode_ready:
+            pyannote_ready = False
+            pyannote_issue_code = "DIARIZATION_DECODE_UNAVAILABLE"
         alignment_ready, alignment_issue_code = alignment_backend.capability()
         alignment_romanizer_configured = bool(os.environ.get("OMEGA_ALIGNMENT_ROMANIZER"))
         alignment_text_map_configured = False
@@ -406,6 +421,8 @@ class DoctorReport:
             known_issue_codes.append("DEPENDENCY_MISSING")
         if diarization_issue_code:
             known_issue_codes.append(diarization_issue_code)
+        if pyannote_issue_code:
+            known_issue_codes.append(pyannote_issue_code)
         if alignment_issue_code:
             known_issue_codes.append(alignment_issue_code)
         if alignment_map_issue_code:
@@ -427,10 +444,14 @@ class DoctorReport:
             ffmpeg_available=ffmpeg_available,
             nvidia_summary=nvidia_summary,
             hf_token_configured=bool(os.environ.get("HF_TOKEN")),
+            diarization_backends=diarization_backends,
             diarization_backend_available=diarization_backend_available,
+            pyannote_backend_available=pyannote_backend_available,
             alignment_backend_available=alignment_backend_available,
             diarization_ready=diarization_ready,
             diarization_issue_code=diarization_issue_code,
+            pyannote_ready=pyannote_ready,
+            pyannote_issue_code=pyannote_issue_code,
             diarization_decode_ready=diarization_decode_ready,
             diarization_decode_backend=diarization_decode_backend,
             alignment_ready=alignment_ready,
@@ -465,10 +486,14 @@ class DoctorReport:
             "ffmpeg_available": self.ffmpeg_available,
             "nvidia_summary": self.nvidia_summary,
             "hf_token_configured": self.hf_token_configured,
+            "diarization_backends": self.diarization_backends,
             "diarization_backend_available": self.diarization_backend_available,
+            "pyannote_backend_available": self.pyannote_backend_available,
             "alignment_backend_available": self.alignment_backend_available,
             "diarization_ready": self.diarization_ready,
             "diarization_issue_code": self.diarization_issue_code,
+            "pyannote_ready": self.pyannote_ready,
+            "pyannote_issue_code": self.pyannote_issue_code,
             "diarization_decode_ready": self.diarization_decode_ready,
             "diarization_decode_backend": self.diarization_decode_backend,
             "alignment_ready": self.alignment_ready,
@@ -504,7 +529,9 @@ class DoctorReport:
             f"ffmpeg: {'ok' if self.ffmpeg_available else 'missing'}",
             f"NVIDIA: {self.nvidia_summary}",
             f"HF_TOKEN: {'configured' if self.hf_token_configured else 'missing'}",
+            f"diarization backends: {', '.join(self.diarization_backends)}",
             f"diarization backend: {'ready' if self.diarization_ready else self.diarization_issue_code or 'missing'}",
+            f"pyannote backend: {'ready' if self.pyannote_ready else self.pyannote_issue_code or 'missing'}",
             f"diarization decode stack: {self.diarization_decode_backend if self.diarization_decode_ready else 'incomplete'}",
             f"alignment backend: {'ready' if self.alignment_ready else self.alignment_issue_code or 'missing'}",
             f"alignment romanizer: {'configured' if self.alignment_romanizer_configured else 'not configured'}",
