@@ -1,52 +1,204 @@
 # whisper-omega
 
-`whisper-omega` is a new implementation aiming for a WhisperX-compatible UX with clearer runtime policy, structured failures, and stable JSON output contracts.
+`whisper-omega` is a Whisper transcription CLI focused on predictable runtime behavior, machine-readable failures, and a WhisperX-compatible user experience where it makes sense.
 
-## Current MVP Scope
+It is designed for people who want:
+
+- a single `transcribe` entrypoint with stable JSON output
+- explicit `success` / `degraded` / `failure` outcomes
+- clear runtime policy for CPU / GPU behavior
+- optional alignment and diarization without silent fallbacks
+- a compatibility frontend for common WhisperX-style flags
+
+## What It Currently Provides
 
 - `omega transcribe`
 - `omega whisperx`
 - `omega doctor`
 - `omega setup core`
 - JSON / SRT / VTT / TXT writers
-- `success` / `degraded` / `failure` result model
 - runtime policy: `permissive`, `strict`, `strict-gpu`
-- optional `faster-whisper` integration when installed
-- optional `torchaudio` forced alignment integration when installed
+- optional `faster-whisper` integration
+- optional `torchaudio` forced alignment integration
 - built-in stereo `channel` diarization backend for wav inputs
-- optional `nemo` diarization integration when installed and configured
-- optional `pyannote.audio` diarization integration when installed and configured
+- optional `nemo` diarization integration
+- optional `pyannote.audio` diarization integration
 - WhisperX compatibility mapping for `--model`, `--device`, `--language`, `--batch_size`, `--output_format`, `--diarize`, `--align_model`, `--hf_token`, and `--highlight_words`
+
+## Status
+
+The repository is in an MVP-but-usable state.
+
+- core local acceptance is green
+- `pyannote` acceptance is green when `HF_TOKEN` is configured and the required gated models have been accepted
+- `nemo` acceptance is green on the reproducible CPU-fixed acceptance path
+- GPU acceptance is green on the current validation setup
+
+For the latest reproducible validation commands and expectations, see `docs/VALIDATION_CHECKLIST.md`.
 
 ## Quick Start
 
-```bash
-python3 -m pip install -e .
-omega doctor
-omega setup core
-omega setup align
-omega setup diarize
-omega setup validation
-omega transcribe sample.wav --output-format json --emit-result-json always
-./.venv-system/bin/python scripts/run_acceptance.py
-```
-
-If you are in an offline or sandboxed environment, package installation may require a local virtual environment plus `--no-build-isolation`.
+Create a local environment and install the package:
 
 ```bash
 python3 -m venv --system-site-packages .venv-system
-.venv-system/bin/python -m pip install -e . --no-build-isolation
+./.venv-system/bin/python -m pip install -e . --no-build-isolation
+./.venv-system/bin/python -m pip install '.[core]' --no-build-isolation
 ```
 
-Optional extras:
+Install optional extras as needed:
 
 ```bash
-.venv-system/bin/python -m pip install '.[core]' --no-build-isolation
-.venv-system/bin/python -m pip install '.[align]' --no-build-isolation
-.venv-system/bin/python -m pip install '.[diarize]' --no-build-isolation
-.venv-system/bin/python -m pip install '.[diarize-nemo]' --no-build-isolation
-.venv-system/bin/python -m pip install '.[validation]' --no-build-isolation
+./.venv-system/bin/python -m pip install '.[align]' --no-build-isolation
+./.venv-system/bin/python -m pip install '.[diarize]' --no-build-isolation
+./.venv-system/bin/python -m pip install '.[diarize-nemo]' --no-build-isolation
+./.venv-system/bin/python -m pip install '.[validation]' --no-build-isolation
 ```
+
+Run a quick health check:
+
+```bash
+PYTHONPATH=src ./.venv-system/bin/python -m whisper_omega doctor --json-output
+```
+
+Try a basic transcription:
+
+```bash
+PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
+  --device auto \
+  --model small \
+  --output-format json \
+  --emit-result-json always
+```
+
+Run the canonical local acceptance flow:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=src ./.venv-system/bin/python scripts/run_acceptance.py
+```
+
+If you are in an offline or sandboxed environment, `--no-build-isolation` is often the safest install path.
+
+## Common Usage
+
+Forced alignment:
+
+```bash
+PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
+  --device cpu \
+  --model small \
+  --require-alignment \
+  --align-backend wav2vec2 \
+  --output-format json \
+  --emit-result-json always
+```
+
+Stereo channel diarization:
+
+```bash
+PYTHONPATH=src ./.venv-system/bin/omega transcribe stereo_sample.wav \
+  --device cpu \
+  --model small \
+  --require-diarization \
+  --diarize-backend channel \
+  --output-format json \
+  --emit-result-json always
+```
+
+Pyannote diarization:
+
+```bash
+export HF_TOKEN=...
+PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
+  --device auto \
+  --model small \
+  --language ja \
+  --require-diarization \
+  --diarize-backend pyannote \
+  --output-format json \
+  --emit-result-json always
+```
+
+NeMo diarization:
+
+```bash
+PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
+  --device auto \
+  --model small \
+  --require-diarization \
+  --diarize-backend nemo \
+  --output-format json \
+  --emit-result-json always
+```
+
+## Runtime Notes
+
+`omega doctor` is the best first stop when something is missing. It reports:
+
+- detected device and CUDA visibility
+- available diarization backends
+- alignment readiness
+- decode backend readiness
+- canonical issue codes and recommended actions
+
+The result JSON contract is designed so automation can distinguish:
+
+- hard failures
+- expected degraded paths
+- missing optional capabilities
+
+## Diarization Notes
+
+For zero-extra-dependency diarization on stereo wav files, run `omega transcribe --require-diarization --diarize-backend channel ...`. This backend assigns `CHANNEL_LEFT` / `CHANNEL_RIGHT` speakers from per-channel energy and is useful when each speaker is isolated to one stereo side.
+
+For NeMo diarization, install `.[diarize-nemo]` and run `omega transcribe --require-diarization --diarize-backend nemo ...`. You can optionally point `OMEGA_NEMO_CONFIG` at a NeMo diarizer YAML, or set `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` to steer clustering without a custom config.
+
+For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`. The backend prefers in-memory waveform loading via `torchaudio` when available, which helps avoid some decode-stack issues. You can also provide `OMEGA_PYANNOTE_NUM_SPEAKERS`, `OMEGA_PYANNOTE_MIN_SPEAKERS`, or `OMEGA_PYANNOTE_MAX_SPEAKERS` to constrain the diarization search space.
+
+Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; if `torchaudio` is unavailable, fall back to `ffmpeg` + `torchcodec`.
+
+Current pyannote gated-model chain observed in validation is `pyannote/speaker-diarization-3.1`, `pyannote/segmentation-3.0`, and `pyannote/speaker-diarization-community-1`; the Hugging Face account behind `HF_TOKEN` must have accepted each model's user conditions.
+
+Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` for pyannote, `NEMO_MODEL_UNAVAILABLE` / `NEMO_RUNTIME_FAILURE` / `NEMO_OUTPUT_MISSING` for NeMo, plus `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` for the built-in channel backend.
+
+## Alignment Notes
+
+For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
+
+Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.
+
+For Japanese words that include kanji, you can set `OMEGA_ALIGNMENT_JA_READING_MAP` to a JSON file that maps transcript words to kana readings before alignment.
+
+For any language, `OMEGA_ALIGNMENT_TEXT_MAP` can provide a generic JSON word->normalized-token override before the backend tokenizer runs.
+
+When alignment runs, result JSON metadata now records both `alignment_strategy` and `alignment_token_source` so success, fallback, and degraded paths remain inspectable after the fact.
+
+`scripts/build_ja_reading_map.py` can generate a starter JSON map from a Japanese fixture `manifest.json` so you only need to fill in the readings.
+
+`scripts/build_alignment_text_map.py` can generate a generic starter JSON map for any manifest that includes non-latin tokens.
+
+If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non-latin transcripts can be pre-romanized before alignment.
+
+Alignment language/token resolution currently follows this order:
+
+1. `OMEGA_ALIGNMENT_TEXT_MAP` if a per-word override exists
+2. native latin-script tokenization through `torchaudio` `MMS_FA`
+3. built-in kana romanization for Japanese kana-only text
+4. `OMEGA_ALIGNMENT_JA_READING_MAP` when Japanese words need reading overrides
+5. `OMEGA_ALIGNMENT_ROMANIZER` for other non-latin languages
+6. otherwise `ALIGNMENT_LANGUAGE_UNSUPPORTED`
+
+Unsupported alignment inputs now fail machine-readably with `ALIGNMENT_LANGUAGE_UNSUPPORTED`, `ALIGNMENT_TEXT_UNSUPPORTED`, or map validation codes instead of silently falling back.
+
+## Validation
+
+- `scripts/run_acceptance.py` is the canonical local acceptance entrypoint
+- `scripts/run_pyannote_acceptance.py` covers environment-bound pyannote validation
+- `scripts/run_nemo_acceptance.py` covers environment-bound NeMo validation and forces a CPU-only path for reproducible acceptance
+- `scripts/run_gpu_acceptance.py` records `device=auto`, `device=cuda`, and `strict-gpu` behavior
+- `scripts/generate_validation_report.py` can aggregate validation output into `validation-report.json`
+
+Current local validation status is: canonical acceptance green, `pyannote_acceptance` green with `HF_TOKEN`, `nemo_acceptance` green on the CPU-fixed acceptance path, and GPU acceptance green on the current validation setup.
 
 ## Source Documents
 
@@ -62,35 +214,10 @@ Use these documents as the current source of truth:
 
 `whisper-omega-plan/タスクリスト_20260322.md` is best treated as a working snapshot, not the long-term source of truth.
 
-For zero-extra-dependency diarization on stereo wav files, run `omega transcribe --require-diarization --diarize-backend channel ...`. This backend assigns `CHANNEL_LEFT` / `CHANNEL_RIGHT` speakers from per-channel energy and is useful when each speaker is isolated to one stereo side.
-For NeMo diarization, install `.[diarize-nemo]` and run `omega transcribe --require-diarization --diarize-backend nemo ...`. You can optionally point `OMEGA_NEMO_CONFIG` at a NeMo diarizer YAML, or set `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` to steer clustering without a custom config.
-For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`. The backend prefers in-memory waveform loading via `torchaudio` when available, which helps avoid some decode-stack issues. You can also provide `OMEGA_PYANNOTE_NUM_SPEAKERS`, `OMEGA_PYANNOTE_MIN_SPEAKERS`, or `OMEGA_PYANNOTE_MAX_SPEAKERS` to constrain the diarization search space.
-Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; if `torchaudio` is unavailable, fall back to `ffmpeg` + `torchcodec`.
-Current pyannote gated-model chain observed in validation is `pyannote/speaker-diarization-3.1`, `pyannote/segmentation-3.0`, and `pyannote/speaker-diarization-community-1`; the Hugging Face account behind `HF_TOKEN` must have accepted each model's user conditions.
-Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` for pyannote, `NEMO_MODEL_UNAVAILABLE` / `NEMO_RUNTIME_FAILURE` / `NEMO_OUTPUT_MISSING` for NeMo, plus `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` for the built-in channel backend.
+## WhisperX Compatibility
+
 The `omega whisperx` compatibility frontend also accepts `--hf_token` and maps `--align_model` to alignment-required execution.
 To keep WhisperX compatibility stable, `omega whisperx --diarize` continues to target the `pyannote` backend by default. Use `omega transcribe --diarize-backend channel|nemo|pyannote` when you want to choose among the expanded backend set explicitly.
-For forced alignment, install the `align` extra and run `omega transcribe --require-alignment --align-backend wav2vec2 ...`.
-Current alignment coverage includes latin-script languages plus kana-only Japanese; other unsupported transcripts return a machine-readable alignment validation failure instead of silently degrading.
-For Japanese words that include kanji, you can set `OMEGA_ALIGNMENT_JA_READING_MAP` to a JSON file that maps transcript words to kana readings before alignment.
-For any language, `OMEGA_ALIGNMENT_TEXT_MAP` can provide a generic JSON word->normalized-token override before the backend tokenizer runs.
-When alignment runs, result JSON metadata now records both `alignment_strategy` and `alignment_token_source` so success, fallback, and degraded paths remain inspectable after the fact.
-`scripts/build_ja_reading_map.py` can generate a starter JSON map from a Japanese fixture `manifest.json` so you only need to fill in the readings.
-`scripts/build_alignment_text_map.py` can generate a generic starter JSON map for any manifest that includes non-latin tokens.
-If you have an external romanizer, set `OMEGA_ALIGNMENT_ROMANIZER` and other non-latin transcripts can be pre-romanized before alignment.
-
-Alignment language/token resolution currently follows this order:
-
-1. `OMEGA_ALIGNMENT_TEXT_MAP` if a per-word override exists
-2. native latin-script tokenization through `torchaudio` `MMS_FA`
-3. built-in kana romanization for Japanese kana-only text
-4. `OMEGA_ALIGNMENT_JA_READING_MAP` when Japanese words need reading overrides
-5. `OMEGA_ALIGNMENT_ROMANIZER` for other non-latin languages
-6. otherwise `ALIGNMENT_LANGUAGE_UNSUPPORTED`
-
-Unsupported alignment inputs now fail machine-readably with `ALIGNMENT_LANGUAGE_UNSUPPORTED`, `ALIGNMENT_TEXT_UNSUPPORTED`, or map validation codes instead of silently falling back.
-
-## WhisperX Compatibility
 
 | WhisperX flag | whisper-omega status | Notes |
 |---|---|---|
@@ -120,12 +247,6 @@ Compatibility handling rules are:
 - `omega doctor` now reports known issue codes and recommended actions for missing runtime pieces.
 - `omega doctor` also reports available diarization backends, canonical issue codes, and structured `backend_statuses` for diarization / decode / alignment readiness.
 - `omega doctor` reports whether alignment maps and pyannote speaker-hint env vars are configured, so map-assisted non-latin routing can be checked before runtime.
-- `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
-- `scripts/run_acceptance.py` is the canonical local acceptance entrypoint; it runs `doctor`, full unit tests, ASR smoke, alignment smoke, diarization smoke, and writes `validation-report.json`.
-- `scripts/run_pyannote_acceptance.py` is the environment-bound pyannote acceptance entrypoint; it records the expected `HF_TOKEN_MISSING` case plus the token+hints case, and returns `2` when the environment is blocked by missing runtime prerequisites.
-- `scripts/run_nemo_acceptance.py` is the environment-bound NeMo acceptance entrypoint; it records the expected `CONFIG_INVALID` case plus the hints-based success case, forces a CPU-only execution path for reproducible acceptance, and returns `2` when NeMo prerequisites are missing.
-- `scripts/run_gpu_acceptance.py` is the GPU acceptance entrypoint; it records `device=auto`, `device=cuda`, and `strict-gpu` behavior, and treats `AUDIO_DECODE_FAILURE` as a residual risk rather than a silent fallback.
-- Current local validation status is: canonical acceptance green, `pyannote_acceptance` green with `HF_TOKEN`, `nemo_acceptance` green on the CPU-fixed acceptance path, and GPU acceptance green with residual `AUDIO_DECODE_FAILURE` risk on decode.
 - `scripts/run_alignment_smoke.py` runs fixture-backed alignment routing checks for `D1_SHORT_JA` and `D2_SHORT_EN`.
 - `scripts/run_diarization_smoke.py` runs fixture-backed diarization assignment checks for the current D4 mixes across both `pyannote` and `nemo` smoke backends.
 - `docs/VALIDATION_DATASET_CANDIDATES.md` lists Google-first validation dataset candidates.
