@@ -159,6 +159,8 @@ Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; i
 
 Current pyannote gated-model chain observed in validation is `pyannote/speaker-diarization-3.1`, `pyannote/segmentation-3.0`, and `pyannote/speaker-diarization-community-1`; the Hugging Face account behind `HF_TOKEN` must have accepted each model's user conditions.
 
+If you want a step-by-step setup and troubleshooting guide for `pyannote`, see `docs/PYANNOTE_SETUP.md`.
+
 Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` for pyannote, `NEMO_MODEL_UNAVAILABLE` / `NEMO_RUNTIME_FAILURE` / `NEMO_OUTPUT_MISSING` for NeMo, plus `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` for the built-in channel backend.
 
 ## Alignment Notes
