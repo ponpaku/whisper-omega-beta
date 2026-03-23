@@ -123,8 +123,9 @@ Compatibility handling rules are:
 - `scripts/generate_validation_report.py` can capture `doctor`, unit-test, and smoke results into one JSON report.
 - `scripts/run_acceptance.py` is the canonical local acceptance entrypoint; it runs `doctor`, full unit tests, ASR smoke, alignment smoke, diarization smoke, and writes `validation-report.json`.
 - `scripts/run_pyannote_acceptance.py` is the environment-bound pyannote acceptance entrypoint; it records the expected `HF_TOKEN_MISSING` case plus the token+hints case, and returns `2` when the environment is blocked by missing runtime prerequisites.
-- `scripts/run_nemo_acceptance.py` is the environment-bound NeMo acceptance entrypoint; it records the expected `CONFIG_INVALID` case plus the hints-based success case, and returns `2` when NeMo prerequisites are missing.
+- `scripts/run_nemo_acceptance.py` is the environment-bound NeMo acceptance entrypoint; it records the expected `CONFIG_INVALID` case plus the hints-based success case, forces a CPU-only execution path for reproducible acceptance, and returns `2` when NeMo prerequisites are missing.
 - `scripts/run_gpu_acceptance.py` is the GPU acceptance entrypoint; it records `device=auto`, `device=cuda`, and `strict-gpu` behavior, and treats `AUDIO_DECODE_FAILURE` as a residual risk rather than a silent fallback.
+- Current local validation status is: canonical acceptance green, `pyannote_acceptance` green with `HF_TOKEN`, `nemo_acceptance` green on the CPU-fixed acceptance path, and GPU acceptance green with residual `AUDIO_DECODE_FAILURE` risk on decode.
 - `scripts/run_alignment_smoke.py` runs fixture-backed alignment routing checks for `D1_SHORT_JA` and `D2_SHORT_EN`.
 - `scripts/run_diarization_smoke.py` runs fixture-backed diarization assignment checks for the current D4 mixes across both `pyannote` and `nemo` smoke backends.
 - `docs/VALIDATION_DATASET_CANDIDATES.md` lists Google-first validation dataset candidates.

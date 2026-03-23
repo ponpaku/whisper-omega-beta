@@ -346,10 +346,7 @@ class UnavailablePyannoteBackend(DiarizationBackend):
 
         assigned_segments = [_with_speaker(segment, _speaker_for_interval(segment.start, segment.end, speaker_turns)) for segment in segments]
         assigned_words = [_with_word_speaker(word, _speaker_for_interval(word.start, word.end, speaker_turns)) for word in words]
-        speakers = [
-            Speaker(id=speaker, start=start, end=end, label=speaker)
-            for start, end, speaker in speaker_turns
-        ]
+        speakers = _speakers_from_turns(speaker_turns)
         return DiarizationOutcome(
             segments=assigned_segments,
             words=assigned_words,

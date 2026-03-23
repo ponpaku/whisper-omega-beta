@@ -1,6 +1,6 @@
 # Validation Checklist
 
-最終更新: 2026-03-21
+最終更新: 2026-03-22
 
 この文書はローカルで回せる確認項目をまとめたもの。正式な受け入れ試験は `whisper-omega-plan/specs/appendix_d_validation_v01.md` を親とする。
 
@@ -76,7 +76,7 @@
 - `generate_validation_report.py` は doctor / unittest / ASR smoke / alignment smoke / diarization smoke の結果を JSON へまとめられる
 - `run_acceptance.py` はローカル acceptance の標準導線として `validation-report.json` を再生成できる
 - `run_pyannote_acceptance.py` は pyannote 実依存 acceptance を JSON で記録できる
-- `run_nemo_acceptance.py` は NeMo 実依存 acceptance を JSON で記録できる
+- `run_nemo_acceptance.py` は NeMo 実依存 acceptance を JSON で記録でき、acceptance では CPU 固定で再現性を優先する
 - `run_gpu_acceptance.py` は GPU 実機 acceptance を JSON で記録できる
 
 ## NeMo Acceptance
@@ -89,6 +89,7 @@
 
 - case 1: 無効な `OMEGA_NEMO_CONFIG` で `CONFIG_INVALID` を返す
 - case 2: `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` 設定で success を狙う
+- acceptance 実行中は `CUDA_VISIBLE_DEVICES=\"\"` と `OMEGA_DEVICE=cpu` を使い、GPU/driver 差分ではなく NeMo 導線そのものの健全性を確認する
 - 前提不足時は `blocked=true` と `blocked_reasons` を返し、終了コード `2` で止まる
 
 ## GPU Acceptance
@@ -139,5 +140,6 @@ GPU 実機確認も通常 acceptance と分けて扱う。
 ## 残留リスクとして監視する項目
 
 - GPU 実機では decode/backend 条件により `AUDIO_DECODE_FAILURE` が残る場合がある
+- GPU は `actual_device=cuda` まで確認できているが、end-to-end の decode 安定性はまだ residual risk 扱い
 - non-latin alignment は map / romanizer 補助を前提とした実装であり、一般解ではない
 - pyannote diarization の本番安定性は `HF_TOKEN` と依存スタックの状態に左右される

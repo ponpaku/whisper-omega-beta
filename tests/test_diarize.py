@@ -224,6 +224,51 @@ class DiarizeTests(unittest.TestCase):
         self.assertFalse(outcome.backend_errors)
         self.assertEqual(outcome.segments[0].speaker, "SPEAKER_00")
 
+    def test_diarize_deduplicates_pyannote_speaker_ids_across_multiple_turns(self) -> None:
+        class FakeTurn:
+            def __init__(self, start: float, end: float) -> None:
+                self.start = start
+                self.end = end
+
+        class FakeAnnotation:
+            def itertracks(self, yield_label: bool = False):
+                _ = yield_label
+                yield (FakeTurn(0.0, 0.5), None, "SPEAKER_00")
+                yield (FakeTurn(0.6, 1.0), None, "SPEAKER_00")
+
+        class FakePipeline:
+            @classmethod
+            def from_pretrained(cls, model_id, token=None):
+                _ = (model_id, token)
+                return cls()
+
+            def __call__(self, audio_input, **kwargs):
+                _ = (audio_input, kwargs)
+                return FakeAnnotation()
+
+        fake_torchaudio = types.SimpleNamespace(
+            load=lambda path: (torch.ones((1, 16000)), 16000),
+        )
+
+        os.environ["HF_TOKEN"] = "secret"
+        os.environ["OMEGA_AUDIO_PATH"] = "dummy.wav"
+        with patch.dict(
+            "sys.modules",
+            {
+                "pyannote.audio": types.SimpleNamespace(Pipeline=FakePipeline),
+                "torchaudio": fake_torchaudio,
+            },
+        ):
+            outcome = UnavailablePyannoteBackend().diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
+                [Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9)],
+            )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual([speaker.id for speaker in outcome.speakers], ["SPEAKER_00"])
+        self.assertEqual(outcome.speakers[0].start, 0.0)
+        self.assertEqual(outcome.speakers[0].end, 1.0)
+
     def test_invalid_speaker_hint_is_configuration_error(self) -> None:
         fake_pipeline = types.SimpleNamespace(Pipeline=object)
         os.environ["HF_TOKEN"] = "secret"
