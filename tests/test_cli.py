@@ -74,6 +74,22 @@ class NemoStubDiarizationBackend(DiarizationBackend):
         return DiarizationOutcome(segments=mapped_segments, words=mapped_words, speakers=speakers)
 
 
+class CustomStubDiarizationBackend(DiarizationBackend):
+    name = "custom"
+
+    def diarize(self, segments, words):
+        speakers = [Speaker(id="speaker_0", start=0.0, end=1.0, label="speaker_0")]
+        mapped_segments = [
+            Segment(id=segment.id, start=segment.start, end=segment.end, text=segment.text, speaker="speaker_0")
+            for segment in segments
+        ]
+        mapped_words = [
+            Word(text=word.text, start=word.start, end=word.end, speaker="speaker_0", confidence=word.confidence)
+            for word in words
+        ]
+        return DiarizationOutcome(segments=mapped_segments, words=mapped_words, speakers=speakers)
+
+
 class MissingBackend(ASRBackend):
     name = "missing"
 
@@ -609,6 +625,47 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["diarization_backend"], "nemo")
         self.assertEqual(payload["segments"][0]["speaker"], "SPEAKER_00")
         self.assertEqual(payload["segments"][1]["speaker"], "SPEAKER_01")
+
+    def test_transcribe_accepts_custom_diarization_backend(self) -> None:
+        stereo_path = self._write_stereo_wav("custom.wav")
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    required_features=["diarization"],
+                    diarize_backend="custom",
+                ),
+                asr_backend=StereoTimedStubBackend(),
+                diarization_backend=CustomStubDiarizationBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(stereo_path),
+                    "--device",
+                    "cpu",
+                    "--require-diarization",
+                    "--diarize-backend",
+                    "custom",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["status"], "success")
+        self.assertEqual(payload["metadata"]["diarization_backend"], "custom")
+        self.assertEqual(payload["segments"][0]["speaker"], "speaker_0")
 
     def test_setup_align_lists_alignment_steps(self) -> None:
         result = self.runner.invoke(main, ["setup", "align"])

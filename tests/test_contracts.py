@@ -172,6 +172,7 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(report["diarization_decode_ready"])
         self.assertEqual(report["diarization_decode_backend"], "torchaudio")
         self.assertIn("channel", report["diarization_backends"])
+        self.assertIn("custom", report["diarization_backends"])
 
     def test_doctor_reports_alignment_maps_and_speaker_hints(self) -> None:
         with patch.dict(

@@ -23,6 +23,7 @@ It is designed for people who want:
 - built-in stereo `channel` diarization backend for wav inputs
 - optional `nemo` diarization integration
 - optional `pyannote.audio` diarization integration
+- optional `custom` diarization backend via an external command
 - WhisperX compatibility mapping for `--model`, `--device`, `--language`, `--batch_size`, `--output_format`, `--diarize`, `--align_model`, `--hf_token`, and `--highlight_words`
 
 ## Status
@@ -131,6 +132,19 @@ PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
   --emit-result-json always
 ```
 
+Custom diarization backend:
+
+```bash
+export OMEGA_CUSTOM_DIARIZATION_COMMAND="python /path/to/custom_diarizer.py"
+PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
+  --device auto \
+  --model small \
+  --require-diarization \
+  --diarize-backend custom \
+  --output-format json \
+  --emit-result-json always
+```
+
 ## Runtime Notes
 
 `omega doctor` is the best first stop when something is missing. It reports:
@@ -162,6 +176,8 @@ Current pyannote gated-model chain observed in validation is `pyannote/speaker-d
 If you want a step-by-step setup and troubleshooting guide for `pyannote`, see `docs/PYANNOTE_SETUP.md`.
 
 Known diarization failure families are now split into `HF_TOKEN_MISSING` / `DIARIZATION_AUTH_FAILURE` / `DIARIZATION_MODEL_UNAVAILABLE` / `DIARIZATION_DECODE_FAILURE` / `CONFIG_INVALID` for pyannote, `NEMO_MODEL_UNAVAILABLE` / `NEMO_RUNTIME_FAILURE` / `NEMO_OUTPUT_MISSING` for NeMo, plus `DIARIZATION_CHANNELS_UNAVAILABLE` / `DIARIZATION_CHANNEL_AMBIGUOUS` / `DIARIZATION_AUDIO_UNSUPPORTED` for the built-in channel backend.
+
+The `custom` backend is enabled by `OMEGA_CUSTOM_DIARIZATION_COMMAND`. The command receives a JSON request on stdin with `audio_path`, `segments`, `words`, and `requested_device`, and should return either `speaker_turns` or full `segments` / `words` / `speakers` JSON.
 
 ## Alignment Notes
 

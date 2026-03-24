@@ -14,6 +14,7 @@ from whisper_omega.asr.base import ASRBackend
 from whisper_omega.asr.faster_whisper_backend import FasterWhisperBackend, dependency_error
 from whisper_omega.diarize.base import (
     ChannelDiarizationBackend,
+    CustomDiarizationBackend,
     DiarizationBackend,
     NemoDiarizationBackend,
     NoopDiarizationBackend,
@@ -263,6 +264,8 @@ class TranscriptionService:
             return UnavailablePyannoteBackend()
         if name == "nemo":
             return NemoDiarizationBackend()
+        if name == "custom":
+            return CustomDiarizationBackend()
         if name == "channel":
             return ChannelDiarizationBackend()
         return NoopDiarizationBackend()
@@ -365,11 +368,13 @@ class DoctorReport:
         torchaudio_available = _module_available("torchaudio")
         torchcodec_available = _module_available("torchcodec")
         diarization_backend = ChannelDiarizationBackend()
+        custom_backend = CustomDiarizationBackend()
         nemo_backend = NemoDiarizationBackend()
         pyannote_backend = UnavailablePyannoteBackend()
         alignment_backend = Wav2Vec2AlignmentBackend()
-        diarization_backends = ["none", "channel", "nemo", "pyannote"]
+        diarization_backends = ["none", "channel", "nemo", "pyannote", "custom"]
         diarization_backend_available = True
+        custom_ready, custom_issue_code = custom_backend.capability()
         nemo_backend_available = _module_available("nemo")
         pyannote_backend_available = _module_available("pyannote.audio")
         alignment_backend_available = torchaudio_available
@@ -432,6 +437,8 @@ class DoctorReport:
             known_issue_codes.append("DEPENDENCY_MISSING")
         if diarization_issue_code:
             known_issue_codes.append(diarization_issue_code)
+        if custom_issue_code:
+            known_issue_codes.append(custom_issue_code)
         if nemo_issue_code:
             known_issue_codes.append(nemo_issue_code)
         if pyannote_issue_code:
@@ -497,6 +504,13 @@ class DoctorReport:
                 ready=self.diarization_ready,
                 issue_code=self.diarization_issue_code,
                 recommended_actions=self.recommended_actions_for(self.diarization_issue_code),
+            ),
+            "custom": _status_entry(
+                installed=bool(os.environ.get("OMEGA_CUSTOM_DIARIZATION_COMMAND")),
+                importable=bool(os.environ.get("OMEGA_CUSTOM_DIARIZATION_COMMAND")),
+                ready=CustomDiarizationBackend().capability()[0],
+                issue_code=CustomDiarizationBackend().capability()[1],
+                recommended_actions=self.recommended_actions_for(CustomDiarizationBackend().capability()[1]),
             ),
             "nemo": _status_entry(
                 installed=self.nemo_backend_available,

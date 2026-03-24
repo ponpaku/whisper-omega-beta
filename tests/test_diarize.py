@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import types
 import unittest
@@ -12,6 +13,7 @@ import torch
 
 from whisper_omega.diarize.base import (
     ChannelDiarizationBackend,
+    CustomDiarizationBackend,
     NemoDiarizationBackend,
     UnavailablePyannoteBackend,
     _prepare_nemo_audio,
@@ -95,6 +97,78 @@ class DiarizeTests(unittest.TestCase):
             outcome.backend_errors[0].code,
             {"DIARIZATION_BACKEND_UNAVAILABLE", "HF_TOKEN_MISSING"},
         )
+
+    def test_custom_backend_assigns_speakers_from_turns(self) -> None:
+        os.environ["OMEGA_AUDIO_PATH"] = "dummy.wav"
+        os.environ["OMEGA_CUSTOM_DIARIZATION_COMMAND"] = "custom-backend"
+
+        def fake_run(cmd, input=None, capture_output=False, text=False, check=False):
+            _ = (cmd, capture_output, text, check)
+            self.assertIn('"audio_path": "dummy.wav"', input)
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(
+                    {
+                        "speaker_turns": [
+                            {"start": 0.0, "end": 0.5, "speaker": "speaker_0"},
+                            {"start": 0.5, "end": 1.0, "speaker": "speaker_1"},
+                        ]
+                    }
+                ),
+                stderr="",
+            )
+
+        with patch("whisper_omega.diarize.base.subprocess.run", side_effect=fake_run):
+            outcome = CustomDiarizationBackend().diarize(
+                [
+                    Segment(id=0, start=0.0, end=0.5, text="left", speaker=None),
+                    Segment(id=1, start=0.5, end=1.0, text="right", speaker=None),
+                ],
+                [
+                    Word(text="left", start=0.0, end=0.5, speaker=None, confidence=0.9),
+                    Word(text="right", start=0.5, end=1.0, speaker=None, confidence=0.9),
+                ],
+            )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.segments[0].speaker, "speaker_0")
+        self.assertEqual(outcome.segments[1].speaker, "speaker_1")
+        self.assertEqual([speaker.id for speaker in outcome.speakers], ["speaker_0", "speaker_1"])
+
+    def test_custom_backend_accepts_full_payload(self) -> None:
+        os.environ["OMEGA_AUDIO_PATH"] = "dummy.wav"
+        os.environ["OMEGA_CUSTOM_DIARIZATION_COMMAND"] = "custom-backend"
+
+        def fake_run(cmd, input=None, capture_output=False, text=False, check=False):
+            _ = (cmd, input, capture_output, text, check)
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(
+                    {
+                        "segments": [
+                            {"id": 0, "start": 0.0, "end": 1.0, "text": "hello", "speaker": "speaker_0"}
+                        ],
+                        "words": [
+                            {"text": "hello", "start": 0.0, "end": 1.0, "speaker": "speaker_0", "confidence": 0.9}
+                        ],
+                        "speakers": [
+                            {"id": "speaker_0", "start": 0.0, "end": 1.0, "label": "speaker_0"}
+                        ],
+                    }
+                ),
+                stderr="",
+            )
+
+        with patch("whisper_omega.diarize.base.subprocess.run", side_effect=fake_run):
+            outcome = CustomDiarizationBackend().diarize(
+                [Segment(id=0, start=0.0, end=1.0, text="hello", speaker=None)],
+                [Word(text="hello", start=0.0, end=1.0, speaker=None, confidence=0.9)],
+            )
+
+        self.assertFalse(outcome.backend_errors)
+        self.assertEqual(outcome.segments[0].speaker, "speaker_0")
+        self.assertEqual(outcome.words[0].speaker, "speaker_0")
+        self.assertEqual(outcome.speakers[0].id, "speaker_0")
 
     def test_diarize_prefers_in_memory_waveform_when_torchaudio_is_available(self) -> None:
         class FakeTurn:

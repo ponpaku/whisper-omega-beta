@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 import importlib.util
 import json
 import os
+import shlex
+import subprocess
 import tempfile
 from typing import Iterable
 import wave
@@ -35,6 +37,120 @@ class NoopDiarizationBackend(DiarizationBackend):
 
     def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
         return DiarizationOutcome(segments=segments, words=words, speakers=[])
+
+
+class CustomDiarizationBackend(DiarizationBackend):
+    name = "custom"
+
+    def capability(self) -> tuple[bool, str | None]:
+        command = os.environ.get("OMEGA_CUSTOM_DIARIZATION_COMMAND", "").strip()
+        if not command:
+            return (False, None)
+        return (True, None)
+
+    def diarize(self, segments: list[Segment], words: list[Word]) -> DiarizationOutcome:
+        command = os.environ.get("OMEGA_CUSTOM_DIARIZATION_COMMAND", "").strip()
+        audio_path = os.environ.get("OMEGA_AUDIO_PATH")
+        if not command:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="CONFIG_INVALID",
+                category="configuration",
+                message="OMEGA_CUSTOM_DIARIZATION_COMMAND is required for custom diarization",
+                retryable=False,
+            )
+        if not audio_path:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="CONFIG_INVALID",
+                category="configuration",
+                message="OMEGA_AUDIO_PATH is required for custom diarization",
+                retryable=False,
+            )
+
+        request_payload = {
+            "audio_path": audio_path,
+            "segments": [segment.to_dict() for segment in segments],
+            "words": [word.to_dict() for word in words],
+            "requested_device": os.environ.get("OMEGA_DEVICE", "cpu"),
+        }
+        try:
+            completed = subprocess.run(
+                shlex.split(command),
+                input=json.dumps(request_payload, ensure_ascii=False),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except Exception as exc:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="DIARIZATION_BACKEND_UNAVAILABLE",
+                category="dependency",
+                message=str(exc),
+                retryable=False,
+            )
+
+        if completed.returncode != 0:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="INTERNAL_ERROR",
+                category="runtime",
+                message=(completed.stderr or completed.stdout or f"custom diarization command exited with {completed.returncode}").strip(),
+                retryable=True,
+            )
+
+        try:
+            payload = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            return _failure_outcome(
+                self.name,
+                segments,
+                words,
+                code="CONFIG_INVALID",
+                category="configuration",
+                message=f"custom diarization output is not valid JSON: {exc}",
+                retryable=False,
+            )
+
+        backend_errors = [_backend_error_from_dict(self.name, item) for item in payload.get("backend_errors", [])]
+        if backend_errors:
+            return DiarizationOutcome(
+                segments=segments,
+                words=words,
+                speakers=[],
+                backend_errors=backend_errors,
+            )
+
+        if "speaker_turns" in payload:
+            speaker_turns = [
+                (float(item["start"]), float(item["end"]), str(item["speaker"]))
+                for item in payload["speaker_turns"]
+            ]
+            assigned_segments = [_with_speaker(segment, _speaker_for_interval(segment.start, segment.end, speaker_turns)) for segment in segments]
+            assigned_words = [_with_word_speaker(word, _speaker_for_interval(word.start, word.end, speaker_turns)) for word in words]
+            return DiarizationOutcome(
+                segments=assigned_segments,
+                words=assigned_words,
+                speakers=_speakers_from_turns(speaker_turns),
+            )
+
+        output_segments = [_segment_from_dict(item) for item in payload.get("segments", [segment.to_dict() for segment in segments])]
+        output_words = [_word_from_dict(item) for item in payload.get("words", [word.to_dict() for word in words])]
+        output_speakers = [_speaker_from_dict(item) for item in payload.get("speakers", [])]
+        return DiarizationOutcome(
+            segments=output_segments,
+            words=output_words,
+            speakers=output_speakers,
+        )
 
 
 @dataclass(slots=True)
@@ -731,6 +847,46 @@ def _with_word_speaker(word: Word, speaker: str | None) -> Word:
         end=word.end,
         speaker=speaker,
         confidence=word.confidence,
+    )
+
+
+def _segment_from_dict(payload: dict) -> Segment:
+    return Segment(
+        id=int(payload["id"]),
+        start=float(payload["start"]),
+        end=float(payload["end"]),
+        text=str(payload["text"]),
+        speaker=payload.get("speaker"),
+    )
+
+
+def _word_from_dict(payload: dict) -> Word:
+    confidence = payload.get("confidence")
+    return Word(
+        text=str(payload["text"]),
+        start=float(payload["start"]),
+        end=float(payload["end"]),
+        speaker=payload.get("speaker"),
+        confidence=None if confidence is None else float(confidence),
+    )
+
+
+def _speaker_from_dict(payload: dict) -> Speaker:
+    return Speaker(
+        id=str(payload["id"]),
+        start=float(payload["start"]),
+        end=float(payload["end"]),
+        label=payload.get("label"),
+    )
+
+
+def _backend_error_from_dict(default_backend: str, payload: dict) -> BackendError:
+    return BackendError(
+        backend=str(payload.get("backend", default_backend)),
+        code=str(payload["code"]),
+        category=str(payload["category"]),
+        message=str(payload["message"]),
+        retryable=bool(payload.get("retryable", False)),
     )
 
 
