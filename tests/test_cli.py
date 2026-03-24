@@ -141,6 +141,21 @@ class TokenAwareDiarizationBackend(DiarizationBackend):
         return DiarizationOutcome(segments=segments, words=words, speakers=[])
 
 
+class HintAwareDiarizationBackend(DiarizationBackend):
+    name = "pyannote"
+
+    def diarize(self, segments, words):
+        speakers = [
+            Speaker(
+                id=f"num={os.environ.get('OMEGA_PYANNOTE_NUM_SPEAKERS')},min={os.environ.get('OMEGA_PYANNOTE_MIN_SPEAKERS')},max={os.environ.get('OMEGA_PYANNOTE_MAX_SPEAKERS')}",
+                start=0.0,
+                end=1.0,
+                label="hint",
+            )
+        ]
+        return DiarizationOutcome(segments=segments, words=words, speakers=speakers)
+
+
 class CliTests(unittest.TestCase):
     def setUp(self) -> None:
         self.runner = CliRunner()
@@ -666,6 +681,69 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["status"], "success")
         self.assertEqual(payload["metadata"]["diarization_backend"], "custom")
         self.assertEqual(payload["segments"][0]["speaker"], "speaker_0")
+
+    def test_transcribe_passes_speaker_hint_options_to_diarization_backend(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    required_features=["diarization"],
+                    diarize_backend="pyannote",
+                ),
+                asr_backend=StubBackend(),
+                diarization_backend=HintAwareDiarizationBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--require-diarization",
+                    "--diarize-backend",
+                    "pyannote",
+                    "--num-speakers",
+                    "2",
+                    "--min-speakers",
+                    "1",
+                    "--max-speakers",
+                    "3",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["speakers"][0]["id"], "num=2,min=1,max=3")
+
+    def test_transcribe_rejects_inconsistent_speaker_hint_options(self) -> None:
+        result = self.runner.invoke(
+            main,
+            [
+                "transcribe",
+                str(self.audio_path),
+                "--require-diarization",
+                "--diarize-backend",
+                "pyannote",
+                "--num-speakers",
+                "2",
+                "--min-speakers",
+                "3",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 40)
+        self.assertIn("--num-speakers cannot be smaller than --min-speakers", result.output)
 
     def test_setup_align_lists_alignment_steps(self) -> None:
         result = self.runner.invoke(main, ["setup", "align"])

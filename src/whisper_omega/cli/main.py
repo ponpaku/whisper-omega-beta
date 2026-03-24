@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import os
 import sys
@@ -36,6 +37,24 @@ def _write_output(service: TranscriptionService, output_path: Path | None, outpu
     service.write_output(result, output_format, output_path)
 
 
+@contextmanager
+def _temporary_env(updates: dict[str, str | None]):
+    original = {key: os.environ.get(key) for key in updates}
+    try:
+        for key, value in updates.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        yield
+    finally:
+        for key, value in original.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
 def _run_transcribe(
     input_path: str,
     model: str,
@@ -52,7 +71,29 @@ def _run_transcribe(
     diarize_backend: str,
     align_backend: str,
     batch_size: int | None,
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
 ) -> int:
+    if num_speakers is not None and num_speakers <= 0:
+        click.echo("usage error: --num-speakers must be greater than 0", err=True)
+        return EXIT_CODES["usage"]
+    if min_speakers is not None and min_speakers <= 0:
+        click.echo("usage error: --min-speakers must be greater than 0", err=True)
+        return EXIT_CODES["usage"]
+    if max_speakers is not None and max_speakers <= 0:
+        click.echo("usage error: --max-speakers must be greater than 0", err=True)
+        return EXIT_CODES["usage"]
+    if min_speakers is not None and max_speakers is not None and min_speakers > max_speakers:
+        click.echo("usage error: --min-speakers cannot be greater than --max-speakers", err=True)
+        return EXIT_CODES["usage"]
+    if num_speakers is not None and min_speakers is not None and num_speakers < min_speakers:
+        click.echo("usage error: --num-speakers cannot be smaller than --min-speakers", err=True)
+        return EXIT_CODES["usage"]
+    if num_speakers is not None and max_speakers is not None and num_speakers > max_speakers:
+        click.echo("usage error: --num-speakers cannot be greater than --max-speakers", err=True)
+        return EXIT_CODES["usage"]
+
     try:
         normalized_required = validate_cli_constraints(
             runtime_policy=runtime_policy,
@@ -83,7 +124,15 @@ def _run_transcribe(
         batch_size=batch_size,
     )
     service = TranscriptionService(config)
-    result = service.transcribe(Path(input_path))
+    diarization_env = {
+        "OMEGA_PYANNOTE_NUM_SPEAKERS": None if num_speakers is None else str(num_speakers),
+        "OMEGA_PYANNOTE_MIN_SPEAKERS": None if min_speakers is None else str(min_speakers),
+        "OMEGA_PYANNOTE_MAX_SPEAKERS": None if max_speakers is None else str(max_speakers),
+        "OMEGA_NEMO_NUM_SPEAKERS": None if num_speakers is None else str(num_speakers),
+        "OMEGA_NEMO_MAX_SPEAKERS": None if max_speakers is None else str(max_speakers),
+    }
+    with _temporary_env(diarization_env):
+        result = service.transcribe(Path(input_path))
 
     if output_file:
         _write_output(service, Path(output_file), output_format, result)
@@ -132,6 +181,9 @@ def main() -> None:
 @click.option("--diarize-backend", type=click.Choice(["none", "channel", "nemo", "pyannote", "custom"]), default="none", show_default=True)
 @click.option("--align-backend", type=click.Choice(["none", "wav2vec2"]), default="none", show_default=True)
 @click.option("--batch-size", type=int)
+@click.option("--num-speakers", type=int)
+@click.option("--min-speakers", type=int)
+@click.option("--max-speakers", type=int)
 def transcribe(
     input_path: str,
     model: str,
@@ -148,6 +200,9 @@ def transcribe(
     diarize_backend: str,
     align_backend: str,
     batch_size: int | None,
+    num_speakers: int | None,
+    min_speakers: int | None,
+    max_speakers: int | None,
 ) -> None:
     """Transcribe an input audio file."""
     raise SystemExit(
@@ -167,6 +222,9 @@ def transcribe(
             diarize_backend=diarize_backend,
             align_backend=align_backend,
             batch_size=batch_size,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
         )
     )
 
@@ -229,6 +287,9 @@ def whisperx(
             diarize_backend=compat.diarize_backend,
             align_backend=compat.align_backend,
             batch_size=compat.batch_size,
+            num_speakers=None,
+            min_speakers=None,
+            max_speakers=None,
         )
     )
 

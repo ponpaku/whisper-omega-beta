@@ -169,6 +169,8 @@ For NeMo diarization, install `.[diarize-nemo]` and run `omega transcribe --requ
 
 For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`. The backend prefers in-memory waveform loading via `torchaudio` when available, which helps avoid some decode-stack issues. You can also provide `OMEGA_PYANNOTE_NUM_SPEAKERS`, `OMEGA_PYANNOTE_MIN_SPEAKERS`, or `OMEGA_PYANNOTE_MAX_SPEAKERS` to constrain the diarization search space.
 
+For both `pyannote` and `nemo`, the CLI also accepts `--num-speakers`, `--min-speakers`, and `--max-speakers` as backend hints.
+
 Recommended diarization stack is `pyannote.audio` + `HF_TOKEN` + `torchaudio`; if `torchaudio` is unavailable, fall back to `ffmpeg` + `torchcodec`.
 
 Current pyannote gated-model chain observed in validation is `pyannote/speaker-diarization-3.1`, `pyannote/segmentation-3.0`, and `pyannote/speaker-diarization-community-1`; the Hugging Face account behind `HF_TOKEN` must have accepted each model's user conditions.
