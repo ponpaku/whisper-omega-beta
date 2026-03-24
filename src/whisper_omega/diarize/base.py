@@ -7,6 +7,7 @@ import os
 import tempfile
 from typing import Iterable
 import wave
+from pathlib import Path
 
 from whisper_omega.runtime.models import BackendError, Segment, Speaker, Word
 
@@ -170,14 +171,15 @@ class NemoDiarizationBackend(DiarizationBackend):
         try:
             with tempfile.TemporaryDirectory(prefix="omega-nemo-") as tmpdir:
                 tmp_root = os.path.abspath(tmpdir)
+                prepared_audio_path = _prepare_nemo_audio(audio_path, tmp_root)
                 manifest_path = os.path.join(tmp_root, "manifest.json")
                 out_dir = os.path.join(tmp_root, "out")
                 os.makedirs(out_dir, exist_ok=True)
-                _write_nemo_manifest(audio_path, manifest_path)
+                _write_nemo_manifest(prepared_audio_path, manifest_path)
                 config = _build_nemo_config(OmegaConf, manifest_path, out_dir, device=os.environ.get("OMEGA_DEVICE", "cpu"))
                 diarizer = ClusteringDiarizer(cfg=config)
-                diarizer.diarize(paths2audio_files=[audio_path], batch_size=1)
-                speaker_turns = _parse_nemo_rttm(out_dir, audio_path)
+                diarizer.diarize(paths2audio_files=[prepared_audio_path], batch_size=1)
+                speaker_turns = _parse_nemo_rttm(out_dir, prepared_audio_path)
         except ValueError as exc:
             return _failure_outcome(
                 self.name,
@@ -549,6 +551,52 @@ def _parse_nemo_rttm(out_dir: str, audio_path: str) -> list[tuple[float, float, 
     if not candidates:
         raise FileNotFoundError(f"nemo diarization did not produce an RTTM for {stem}")
     return _read_rttm_turns(candidates[0])
+
+
+def _prepare_nemo_audio(audio_path: str, tmp_root: str) -> str:
+    torchaudio = None
+    try:
+        import torchaudio
+    except Exception:
+        torchaudio = None
+
+    try:
+        if torchaudio is not None:
+            waveform, sample_rate = torchaudio.load(audio_path)
+        else:
+            raise RuntimeError("torchaudio unavailable")
+    except Exception:
+        try:
+            import soundfile as sf
+            import torch
+        except Exception:
+            return audio_path
+        try:
+            data, sample_rate = sf.read(audio_path, always_2d=True)
+        except Exception:
+            return audio_path
+        waveform = torch.tensor(data.T, dtype=torch.float32)
+
+    # NeMo VAD collation expects mono 1D audio and behaves best at 16 kHz.
+    if waveform.ndim != 2:
+        return audio_path
+    if waveform.shape[0] > 1:
+        waveform = waveform.mean(dim=0, keepdim=True)
+    target_sample_rate = 16000
+    if sample_rate != target_sample_rate:
+        waveform = torchaudio.functional.resample(waveform, sample_rate, target_sample_rate)
+        sample_rate = target_sample_rate
+
+    prepared_path = Path(tmp_root) / "nemo_input.wav"
+    try:
+        import soundfile as sf
+
+        sf.write(str(prepared_path), waveform.squeeze(0).cpu().numpy(), sample_rate)
+    except Exception:
+        if torchaudio is None:
+            return audio_path
+        torchaudio.save(str(prepared_path), waveform, sample_rate)
+    return str(prepared_path)
 
 
 def _read_rttm_turns(path: str) -> list[tuple[float, float, str]]:

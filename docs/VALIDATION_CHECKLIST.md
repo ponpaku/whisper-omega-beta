@@ -77,6 +77,7 @@
 - `run_acceptance.py` はローカル acceptance の標準導線として `validation-report.json` を再生成できる
 - `run_pyannote_acceptance.py` は pyannote 実依存 acceptance を JSON で記録できる
 - `run_nemo_acceptance.py` は NeMo 実依存 acceptance を JSON で記録でき、acceptance では CPU 固定で再現性を優先する
+- NeMo 実行時は stereo / non-16kHz 入力を一時 mono 16kHz wav へ正規化してから backend へ渡す
 - `run_gpu_acceptance.py` は GPU 実機 acceptance を JSON で記録できる
 
 ## NeMo Acceptance

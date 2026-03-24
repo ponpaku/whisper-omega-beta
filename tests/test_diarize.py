@@ -14,6 +14,7 @@ from whisper_omega.diarize.base import (
     ChannelDiarizationBackend,
     NemoDiarizationBackend,
     UnavailablePyannoteBackend,
+    _prepare_nemo_audio,
     _build_nemo_config,
 )
 from whisper_omega.runtime.models import Segment, Word
@@ -71,6 +72,16 @@ class DiarizeTests(unittest.TestCase):
             handle.setframerate(sample_rate)
             handle.writeframes(bytes(frames))
         return path
+
+    def test_prepare_nemo_audio_downmixes_and_resamples(self) -> None:
+        stereo_path = self._write_stereo_wav("nemo-input.wav")
+
+        prepared = _prepare_nemo_audio(str(stereo_path), self.tmpdir.name)
+
+        self.assertNotEqual(prepared, str(stereo_path))
+        with wave.open(prepared, "rb") as handle:
+            self.assertEqual(handle.getnchannels(), 1)
+            self.assertEqual(handle.getframerate(), 16000)
 
     def test_missing_token_is_configuration_error(self) -> None:
         fake_pipeline = types.SimpleNamespace(Pipeline=object)
@@ -398,7 +409,7 @@ class DiarizeTests(unittest.TestCase):
                 _ = (paths2audio_files, batch_size)
                 out_dir = Path(self.cfg["diarizer"]["out_dir"]) / "pred_rttms"
                 out_dir.mkdir(parents=True, exist_ok=True)
-                (out_dir / "nemo.rttm").write_text(
+                (out_dir / "nemo_input.rttm").write_text(
                     "\n".join(
                         [
                             "SPEAKER nemo 1 0.000 0.450 <NA> <NA> SPEAKER_00 <NA> <NA>",

@@ -151,7 +151,7 @@ The result JSON contract is designed so automation can distinguish:
 
 For zero-extra-dependency diarization on stereo wav files, run `omega transcribe --require-diarization --diarize-backend channel ...`. This backend assigns `CHANNEL_LEFT` / `CHANNEL_RIGHT` speakers from per-channel energy and is useful when each speaker is isolated to one stereo side.
 
-For NeMo diarization, install `.[diarize-nemo]` and run `omega transcribe --require-diarization --diarize-backend nemo ...`. You can optionally point `OMEGA_NEMO_CONFIG` at a NeMo diarizer YAML, or set `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` to steer clustering without a custom config.
+For NeMo diarization, install `.[diarize-nemo]` and run `omega transcribe --require-diarization --diarize-backend nemo ...`. You can optionally point `OMEGA_NEMO_CONFIG` at a NeMo diarizer YAML, or set `OMEGA_NEMO_NUM_SPEAKERS` / `OMEGA_NEMO_MAX_SPEAKERS` to steer clustering without a custom config. The backend now normalizes stereo / non-16 kHz inputs to a temporary mono 16 kHz wav before invoking NeMo, which avoids a common VAD collation failure on long-form meeting audio.
 
 For pyannote diarization, set `HF_TOKEN` before running `omega transcribe --require-diarization --diarize-backend pyannote ...`. The backend prefers in-memory waveform loading via `torchaudio` when available, which helps avoid some decode-stack issues. You can also provide `OMEGA_PYANNOTE_NUM_SPEAKERS`, `OMEGA_PYANNOTE_MIN_SPEAKERS`, or `OMEGA_PYANNOTE_MAX_SPEAKERS` to constrain the diarization search space.
 
