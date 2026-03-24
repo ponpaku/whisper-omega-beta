@@ -25,6 +25,6 @@ class ASRBackend:
         language: str | None,
         device: str,
         batch_size: int | None = None,
+        word_timestamps: bool = True,
     ) -> BackendTranscription:
         raise NotImplementedError
-

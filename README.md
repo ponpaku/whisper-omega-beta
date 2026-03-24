@@ -72,6 +72,19 @@ PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
   --emit-result-json always
 ```
 
+For lower-latency or lighter JSON output, you can disable word timestamps and suppress detailed arrays:
+
+```bash
+PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
+  --device auto \
+  --model small \
+  --no-word-timestamps \
+  --no-include-words \
+  --no-include-segments \
+  --output-format json \
+  --emit-result-json always
+```
+
 Run the canonical local acceptance flow:
 
 ```bash

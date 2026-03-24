@@ -26,8 +26,8 @@ def extract_json(output: str) -> dict:
 class StubBackend(ASRBackend):
     name = "stub"
 
-    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
-        _ = (audio_path, model_name, device, batch_size)
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+        _ = (audio_path, model_name, device, batch_size, word_timestamps)
         return BackendTranscription(
             text="hello world",
             language=language or "en",
@@ -39,8 +39,8 @@ class StubBackend(ASRBackend):
 class StereoTimedStubBackend(ASRBackend):
     name = "stub"
 
-    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
-        _ = (audio_path, model_name, language, device, batch_size)
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+        _ = (audio_path, model_name, language, device, batch_size, word_timestamps)
         return BackendTranscription(
             text="left right",
             language="en",
@@ -93,8 +93,8 @@ class CustomStubDiarizationBackend(DiarizationBackend):
 class MissingBackend(ASRBackend):
     name = "missing"
 
-    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
-        _ = (audio_path, model_name, language, device, batch_size)
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+        _ = (audio_path, model_name, language, device, batch_size, word_timestamps)
         raise RuntimeError("DEPENDENCY_MISSING:test-backend")
 
 
@@ -744,6 +744,110 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 40)
         self.assertIn("--num-speakers cannot be smaller than --min-speakers", result.output)
+
+    def test_transcribe_can_disable_word_timestamps_and_word_output(self) -> None:
+        captured = {}
+
+        class WordTimestampAwareBackend(ASRBackend):
+            name = "stub"
+
+            def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+                _ = (audio_path, model_name, language, device, batch_size)
+                captured["word_timestamps"] = word_timestamps
+                words = []
+                if word_timestamps:
+                    words.append(Word(text="hello", start=0.0, end=0.5, speaker=None, confidence=0.9))
+                return BackendTranscription(
+                    text="hello world",
+                    language="en",
+                    segments=[Segment(id=0, start=0.0, end=1.0, text="hello world", speaker=None)],
+                    words=words,
+                )
+
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    word_timestamps=False,
+                    include_words=False,
+                ),
+                asr_backend=WordTimestampAwareBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--no-word-timestamps",
+                    "--no-include-words",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertFalse(captured["word_timestamps"])
+        payload = extract_json(result.output)
+        self.assertEqual(payload["words"], [])
+
+    def test_transcribe_can_suppress_segment_output(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    include_segments=False,
+                ),
+                asr_backend=StubBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--no-include-segments",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["segments"], [])
+
+    def test_transcribe_rejects_segmentless_subtitle_output(self) -> None:
+        result = self.runner.invoke(
+            main,
+            [
+                "transcribe",
+                str(self.audio_path),
+                "--output-format",
+                "srt",
+                "--no-include-segments",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 40)
+        self.assertIn("requires segment output", result.output)
 
     def test_setup_align_lists_alignment_steps(self) -> None:
         result = self.runner.invoke(main, ["setup", "align"])

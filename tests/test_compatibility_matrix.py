@@ -25,8 +25,8 @@ def extract_json(output: str) -> dict:
 class StubBackend(ASRBackend):
     name = "stub"
 
-    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
-        _ = (audio_path, model_name, device, batch_size)
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+        _ = (audio_path, model_name, device, batch_size, word_timestamps)
         return BackendTranscription(
             text="hello world",
             language=language or "en",
@@ -38,8 +38,8 @@ class StubBackend(ASRBackend):
 class MissingBackend(ASRBackend):
     name = "missing"
 
-    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
-        _ = (audio_path, model_name, language, device, batch_size)
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+        _ = (audio_path, model_name, language, device, batch_size, word_timestamps)
         raise RuntimeError("DEPENDENCY_MISSING:test-backend")
 
 

@@ -38,6 +38,9 @@ class ServiceConfig:
     model_name: str = "small"
     language: str | None = None
     batch_size: int | None = None
+    word_timestamps: bool = True
+    include_segments: bool = True
+    include_words: bool = True
 
 
 class TranscriptionService:
@@ -97,6 +100,7 @@ class TranscriptionService:
                 language=self.config.language,
                 device=actual_device,
                 batch_size=self.config.batch_size,
+                word_timestamps=self.config.word_timestamps,
             )
         except RuntimeError as exc:
             marker = str(exc)
@@ -136,7 +140,27 @@ class TranscriptionService:
             speakers=[],
             metadata=metadata,
         )
-        return self._apply_optional_features(audio_path, result)
+        result = self._apply_optional_features(audio_path, result)
+        return self._filter_output_detail(result)
+
+    def _filter_output_detail(self, result: TranscriptionResult) -> TranscriptionResult:
+        segments = result.segments if self.config.include_segments else []
+        words = result.words if self.config.include_words else []
+        if segments is result.segments and words is result.words:
+            return result
+        return TranscriptionResult(
+            schema_version=result.schema_version,
+            status=result.status,
+            text=result.text,
+            language=result.language,
+            segments=segments,
+            words=words,
+            speakers=result.speakers,
+            metadata=result.metadata,
+            error_code=result.error_code,
+            error_category=result.error_category,
+            backend_errors=result.backend_errors,
+        )
 
     def _apply_optional_features(self, audio_path: Path, result: TranscriptionResult) -> TranscriptionResult:
         failed: list[str] = []

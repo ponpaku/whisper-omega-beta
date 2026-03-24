@@ -74,6 +74,9 @@ def _run_transcribe(
     num_speakers: int | None,
     min_speakers: int | None,
     max_speakers: int | None,
+    word_timestamps: bool,
+    include_segments: bool,
+    include_words: bool,
 ) -> int:
     if num_speakers is not None and num_speakers <= 0:
         click.echo("usage error: --num-speakers must be greater than 0", err=True)
@@ -92,6 +95,9 @@ def _run_transcribe(
         return EXIT_CODES["usage"]
     if num_speakers is not None and max_speakers is not None and num_speakers > max_speakers:
         click.echo("usage error: --num-speakers cannot be greater than --max-speakers", err=True)
+        return EXIT_CODES["usage"]
+    if output_format in {"srt", "vtt"} and not include_segments:
+        click.echo(f"usage error: --output-format {output_format} requires segment output", err=True)
         return EXIT_CODES["usage"]
 
     try:
@@ -122,6 +128,9 @@ def _run_transcribe(
         model_name=model,
         language=language,
         batch_size=batch_size,
+        word_timestamps=word_timestamps,
+        include_segments=include_segments,
+        include_words=include_words,
     )
     service = TranscriptionService(config)
     diarization_env = {
@@ -184,6 +193,9 @@ def main() -> None:
 @click.option("--num-speakers", type=int)
 @click.option("--min-speakers", type=int)
 @click.option("--max-speakers", type=int)
+@click.option("--word-timestamps/--no-word-timestamps", default=True, show_default=True)
+@click.option("--include-segments/--no-include-segments", default=True, show_default=True)
+@click.option("--include-words/--no-include-words", default=True, show_default=True)
 def transcribe(
     input_path: str,
     model: str,
@@ -203,6 +215,9 @@ def transcribe(
     num_speakers: int | None,
     min_speakers: int | None,
     max_speakers: int | None,
+    word_timestamps: bool,
+    include_segments: bool,
+    include_words: bool,
 ) -> None:
     """Transcribe an input audio file."""
     raise SystemExit(
@@ -225,6 +240,9 @@ def transcribe(
             num_speakers=num_speakers,
             min_speakers=min_speakers,
             max_speakers=max_speakers,
+            word_timestamps=word_timestamps,
+            include_segments=include_segments,
+            include_words=include_words,
         )
     )
 
@@ -290,6 +308,9 @@ def whisperx(
             num_speakers=None,
             min_speakers=None,
             max_speakers=None,
+            word_timestamps=True,
+            include_segments=True,
+            include_words=True,
         )
     )
 

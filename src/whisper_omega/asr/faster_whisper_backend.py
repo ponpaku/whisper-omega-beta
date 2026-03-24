@@ -16,6 +16,7 @@ class FasterWhisperBackend(ASRBackend):
         language: str | None,
         device: str,
         batch_size: int | None = None,
+        word_timestamps: bool = True,
     ) -> BackendTranscription:
         try:
             from faster_whisper import WhisperModel
@@ -25,7 +26,7 @@ class FasterWhisperBackend(ASRBackend):
         model = WhisperModel(model_name, device=device, compute_type="default")
         transcribe_kwargs = {
             "language": language,
-            "word_timestamps": True,
+            "word_timestamps": word_timestamps,
         }
         _ = batch_size
         segments_iter, info = model.transcribe(str(audio_path), **transcribe_kwargs)

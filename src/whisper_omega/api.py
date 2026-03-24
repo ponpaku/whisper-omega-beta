@@ -40,6 +40,9 @@ def transcribe_file(
     num_speakers: int | None = None,
     min_speakers: int | None = None,
     max_speakers: int | None = None,
+    word_timestamps: bool = True,
+    include_segments: bool = True,
+    include_words: bool = True,
 ) -> TranscriptionResult:
     config = ServiceConfig(
         policy=PolicyConfig(runtime_policy=runtime_policy, device=device),
@@ -48,6 +51,9 @@ def transcribe_file(
         required_features=list(required_features or []),
         align_backend=align_backend,
         diarize_backend=diarize_backend,
+        word_timestamps=word_timestamps,
+        include_segments=include_segments,
+        include_words=include_words,
     )
     service = TranscriptionService(config)
     diarization_env = {

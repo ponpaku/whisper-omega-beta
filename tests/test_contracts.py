@@ -21,8 +21,8 @@ RESULT_FIXTURE_DIR = ROOT / "tests" / "fixtures" / "result_payloads"
 class StubBackend(ASRBackend):
     name = "stub"
 
-    def transcribe(self, audio_path, model_name, language, device, batch_size=None):
-        _ = (audio_path, model_name, language, device, batch_size)
+    def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+        _ = (audio_path, model_name, language, device, batch_size, word_timestamps)
         return BackendTranscription(
             text="hello world",
             language="en",
