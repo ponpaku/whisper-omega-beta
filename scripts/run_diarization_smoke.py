@@ -131,10 +131,11 @@ def _run_nemo_recipe(audio_path: Path, tracks: list[dict], segments: list[Segmen
             self.cfg = cfg
 
         def diarize(self, paths2audio_files=None, batch_size=1):
-            _ = (paths2audio_files, batch_size)
+            _ = batch_size
             out_dir = Path(self.cfg["diarizer"]["out_dir"]) / "pred_rttms"
             out_dir.mkdir(parents=True, exist_ok=True)
-            stem = audio_path.stem
+            prepared_path = Path(paths2audio_files[0]) if paths2audio_files else audio_path
+            stem = prepared_path.stem
             lines = []
             for track in tracks:
                 duration = track["end"] - track["start"]

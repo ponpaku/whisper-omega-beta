@@ -11,6 +11,8 @@ from typing import Iterable
 import wave
 from pathlib import Path
 
+import torch
+
 from whisper_omega.runtime.models import BackendError, Segment, Speaker, Word
 
 
@@ -676,22 +678,9 @@ def _prepare_nemo_audio(audio_path: str, tmp_root: str) -> str:
     except Exception:
         torchaudio = None
 
-    try:
-        if torchaudio is not None:
-            waveform, sample_rate = torchaudio.load(audio_path)
-        else:
-            raise RuntimeError("torchaudio unavailable")
-    except Exception:
-        try:
-            import soundfile as sf
-            import torch
-        except Exception:
-            return audio_path
-        try:
-            data, sample_rate = sf.read(audio_path, always_2d=True)
-        except Exception:
-            return audio_path
-        waveform = torch.tensor(data.T, dtype=torch.float32)
+    waveform, sample_rate = _load_audio_for_nemo(audio_path, torchaudio)
+    if waveform is None or sample_rate is None:
+        return audio_path
 
     # NeMo VAD collation expects mono 1D audio and behaves best at 16 kHz.
     if waveform.ndim != 2:
@@ -700,7 +689,7 @@ def _prepare_nemo_audio(audio_path: str, tmp_root: str) -> str:
         waveform = waveform.mean(dim=0, keepdim=True)
     target_sample_rate = 16000
     if sample_rate != target_sample_rate:
-        waveform = torchaudio.functional.resample(waveform, sample_rate, target_sample_rate)
+        waveform = _resample_nemo_waveform(waveform, sample_rate, target_sample_rate, torchaudio)
         sample_rate = target_sample_rate
 
     prepared_path = Path(tmp_root) / "nemo_input.wav"
@@ -713,6 +702,40 @@ def _prepare_nemo_audio(audio_path: str, tmp_root: str) -> str:
             return audio_path
         torchaudio.save(str(prepared_path), waveform, sample_rate)
     return str(prepared_path)
+
+
+def _load_audio_for_nemo(audio_path: str, torchaudio_module):
+    try:
+        if torchaudio_module is not None:
+            waveform, sample_rate = torchaudio_module.load(audio_path)
+            return waveform, sample_rate
+        raise RuntimeError("torchaudio unavailable")
+    except Exception:
+        try:
+            import soundfile as sf
+        except Exception:
+            return None, None
+        try:
+            data, sample_rate = sf.read(audio_path, always_2d=True)
+        except Exception:
+            return None, None
+        return torch.tensor(data.T, dtype=torch.float32), sample_rate
+
+
+def _resample_nemo_waveform(waveform: torch.Tensor, sample_rate: int, target_sample_rate: int, torchaudio_module):
+    if torchaudio_module is not None:
+        return torchaudio_module.functional.resample(waveform, sample_rate, target_sample_rate)
+
+    if waveform.ndim != 2 or sample_rate <= 0 or target_sample_rate <= 0:
+        raise ValueError("invalid waveform or sample rate for nemo resampling")
+
+    target_frames = max(1, int(round(waveform.shape[1] * target_sample_rate / sample_rate)))
+    return torch.nn.functional.interpolate(
+        waveform.unsqueeze(0),
+        size=target_frames,
+        mode="linear",
+        align_corners=False,
+    ).squeeze(0)
 
 
 def _read_rttm_turns(path: str) -> list[tuple[float, float, str]]:

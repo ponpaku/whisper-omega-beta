@@ -85,6 +85,19 @@ class DiarizeTests(unittest.TestCase):
             self.assertEqual(handle.getnchannels(), 1)
             self.assertEqual(handle.getframerate(), 16000)
 
+    def test_prepare_nemo_audio_falls_back_without_torchaudio(self) -> None:
+        stereo_path = self._write_stereo_wav("nemo-input-fallback.wav")
+        modules = dict(os.sys.modules)
+        modules["torchaudio"] = None
+
+        with patch.dict("sys.modules", modules):
+            prepared = _prepare_nemo_audio(str(stereo_path), self.tmpdir.name)
+
+        self.assertNotEqual(prepared, str(stereo_path))
+        with wave.open(prepared, "rb") as handle:
+            self.assertEqual(handle.getnchannels(), 1)
+            self.assertEqual(handle.getframerate(), 16000)
+
     def test_missing_token_is_configuration_error(self) -> None:
         fake_pipeline = types.SimpleNamespace(Pipeline=object)
         backend = UnavailablePyannoteBackend()
