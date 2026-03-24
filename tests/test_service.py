@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import unittest
+import wave
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from whisper_omega.align.base import AlignmentOutcome, UnavailableWav2Vec2Backend
@@ -45,7 +48,21 @@ class MissingDiarizationBackend(DiarizationBackend):
 
 
 class ServiceTests(unittest.TestCase):
+    def _write_wav(self, duration_ms: int = 1000) -> Path:
+        tmpdir = TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        path = Path(tmpdir.name) / "sample.wav"
+        sample_rate = 8000
+        frame_count = int(sample_rate * (duration_ms / 1000))
+        with wave.open(str(path), "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(sample_rate)
+            handle.writeframes(b"\x00\x00" * frame_count)
+        return path
+
     def test_permissive_optional_failures_become_degraded(self) -> None:
+        audio_path = self._write_wav(1000)
         service = TranscriptionService(
             ServiceConfig(
                 policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
@@ -55,12 +72,17 @@ class ServiceTests(unittest.TestCase):
             asr_backend=StubBackend(),
             diarization_backend=MissingDiarizationBackend(),
         )
-        result = service.transcribe(__file__)
+        result = service.transcribe(audio_path)
         self.assertEqual(result.status, "degraded")
         self.assertEqual(result.metadata.failed_features, ["diarization"])
         self.assertEqual(len(result.backend_errors), 1)
+        self.assertGreaterEqual(result.metadata.timings.total_ms, result.metadata.timings.asr_ms)
+        self.assertGreaterEqual(result.metadata.timings.diarization_ms, 0)
+        self.assertEqual(result.metadata.timings.audio_duration_ms, 1000)
+        self.assertIsNotNone(result.metadata.timings.real_time_factor)
 
     def test_strict_alignment_succeeds_with_existing_words(self) -> None:
+        audio_path = self._write_wav(1000)
         service = TranscriptionService(
             ServiceConfig(
                 policy=PolicyConfig(runtime_policy="strict", device="cpu"),
@@ -70,13 +92,15 @@ class ServiceTests(unittest.TestCase):
             asr_backend=StubBackend(),
             alignment_backend=UnavailableWav2Vec2Backend(),
         )
-        result = service.transcribe(__file__)
+        result = service.transcribe(audio_path)
         self.assertEqual(result.status, "success")
         self.assertIn("alignment", result.metadata.completed_features)
         self.assertEqual(result.metadata.alignment_strategy, "fallback-existing-words")
         self.assertEqual(result.metadata.alignment_token_source, "asr_words")
+        self.assertGreaterEqual(result.metadata.timings.alignment_ms, 0)
 
     def test_strict_gpu_with_auto_fails_when_cuda_unavailable(self) -> None:
+        audio_path = self._write_wav(1000)
         service = TranscriptionService(
             ServiceConfig(
                 policy=PolicyConfig(runtime_policy="strict-gpu", device="auto"),
@@ -84,12 +108,16 @@ class ServiceTests(unittest.TestCase):
             asr_backend=StubBackend(),
         )
         with patch("whisper_omega.runtime.service.effective_device", return_value="cpu"):
-            result = service.transcribe(__file__)
+            result = service.transcribe(audio_path)
 
         self.assertEqual(result.status, "failure")
         self.assertEqual(result.error_code, "GPU_UNAVAILABLE")
+        self.assertGreaterEqual(result.metadata.timings.total_ms, 0)
+        self.assertEqual(result.metadata.timings.audio_duration_ms, 1000)
+        self.assertIsNotNone(result.metadata.timings.real_time_factor)
 
     def test_permissive_alignment_failure_records_alignment_metadata(self) -> None:
+        audio_path = self._write_wav(1000)
         class FailingAlignmentBackend(UnavailableWav2Vec2Backend):
             def align(self, audio_path, text, segments, words, language):
                 _ = (audio_path, text, segments, words, language)
@@ -117,11 +145,12 @@ class ServiceTests(unittest.TestCase):
             asr_backend=StubBackend(),
             alignment_backend=FailingAlignmentBackend(),
         )
-        result = service.transcribe(__file__)
+        result = service.transcribe(audio_path)
 
         self.assertEqual(result.status, "degraded")
         self.assertEqual(result.metadata.alignment_strategy, "romanized:ru")
         self.assertEqual(result.metadata.alignment_token_source, "text_map")
+        self.assertGreaterEqual(result.metadata.timings.alignment_ms, 0)
 
 
 if __name__ == "__main__":

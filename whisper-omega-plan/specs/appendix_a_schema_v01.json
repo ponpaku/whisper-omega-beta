@@ -255,6 +255,7 @@
         "device",
         "requested_device",
         "actual_device",
+        "timings",
         "fallbacks",
         "requested_features",
         "completed_features",
@@ -306,6 +307,9 @@
             "string",
             "null"
           ]
+        },
+        "timings": {
+          "$ref": "#/$defs/timings"
         },
         "fallbacks": {
           "type": "array",
@@ -386,6 +390,48 @@
         "reason": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "timings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_ms",
+        "asr_ms",
+        "alignment_ms",
+        "diarization_ms"
+        ,
+        "audio_duration_ms",
+        "real_time_factor"
+      ],
+      "properties": {
+        "total_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "asr_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alignment_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "diarization_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "audio_duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "real_time_factor": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
         }
       }
     },

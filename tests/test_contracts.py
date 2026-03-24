@@ -61,6 +61,7 @@ class ContractTests(unittest.TestCase):
         )
 
         self.validator.validate(result.to_dict())
+        self.assertIn("timings", result.to_dict()["metadata"])
 
     def test_result_schema_accepts_failure_payload(self) -> None:
         result = TranscriptionResult(
@@ -87,6 +88,7 @@ class ContractTests(unittest.TestCase):
         )
 
         self.validator.validate(result.to_dict())
+        self.assertIn("timings", result.to_dict()["metadata"])
 
     def test_result_schema_accepts_representative_json_fixtures(self) -> None:
         fixture_paths = sorted(RESULT_FIXTURE_DIR.glob("*.json"))

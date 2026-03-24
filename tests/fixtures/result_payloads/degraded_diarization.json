@@ -38,6 +38,14 @@
     "actual_device": "cpu",
     "alignment_strategy": "en",
     "alignment_token_source": "native",
+    "timings": {
+      "total_ms": 913,
+      "asr_ms": 501,
+      "alignment_ms": 122,
+      "diarization_ms": 266,
+      "audio_duration_ms": 1000,
+      "real_time_factor": 0.913
+    },
     "fallbacks": [
       {
         "type": "feature",

@@ -85,6 +85,8 @@ PYTHONPATH=src ./.venv-system/bin/omega transcribe sample.wav \
   --emit-result-json always
 ```
 
+Result JSON always includes `metadata.timings` with `total_ms`, `asr_ms`, `alignment_ms`, `diarization_ms`, `audio_duration_ms`, and `real_time_factor`.
+
 Run the canonical local acceptance flow:
 
 ```bash

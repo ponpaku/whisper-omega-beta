@@ -103,6 +103,26 @@ class Fallback:
 
 
 @dataclass(slots=True)
+class Timings:
+    total_ms: int = 0
+    asr_ms: int = 0
+    alignment_ms: int = 0
+    diarization_ms: int = 0
+    audio_duration_ms: int = 0
+    real_time_factor: float | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "total_ms": self.total_ms,
+            "asr_ms": self.asr_ms,
+            "alignment_ms": self.alignment_ms,
+            "diarization_ms": self.diarization_ms,
+            "audio_duration_ms": self.audio_duration_ms,
+            "real_time_factor": _rounded(self.real_time_factor, 4),
+        }
+
+
+@dataclass(slots=True)
 class Metadata:
     asr_backend: str
     align_backend: str
@@ -112,6 +132,7 @@ class Metadata:
     actual_device: str
     alignment_strategy: str | None = None
     alignment_token_source: str | None = None
+    timings: Timings = field(default_factory=Timings)
     fallbacks: list[Fallback] = field(default_factory=list)
     requested_features: list[str] = field(default_factory=list)
     completed_features: list[str] = field(default_factory=list)
@@ -127,6 +148,7 @@ class Metadata:
             "actual_device": self.actual_device,
             "alignment_strategy": self.alignment_strategy,
             "alignment_token_source": self.alignment_token_source,
+            "timings": self.timings.to_dict(),
             "fallbacks": [item.to_dict() for item in self.fallbacks],
             "requested_features": self.requested_features,
             "completed_features": self.completed_features,

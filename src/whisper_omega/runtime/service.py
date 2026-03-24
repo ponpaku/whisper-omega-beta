@@ -6,6 +6,8 @@ import subprocess
 import sys
 import os
 import importlib.util
+import time
+import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,7 +24,7 @@ from whisper_omega.diarize.base import (
 )
 from whisper_omega.io.writers import write_json, write_srt, write_txt, write_vtt
 from whisper_omega.runtime.codes import CANONICAL_ISSUE_CODES
-from whisper_omega.runtime.models import BackendError, Fallback, Metadata, TranscriptionResult
+from whisper_omega.runtime.models import BackendError, Fallback, Metadata, Timings, TranscriptionResult
 from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device
 
 
@@ -57,10 +59,12 @@ class TranscriptionService:
         self.diarization_backend = diarization_backend or self._make_diarization_backend(config.diarize_backend)
 
     def transcribe(self, audio_path: Path) -> TranscriptionResult:
+        started_at = time.perf_counter()
         requested_device = self.config.policy.device
         actual_device = effective_device(requested_device)
         os.environ["OMEGA_AUDIO_PATH"] = str(audio_path)
         os.environ["OMEGA_DEVICE"] = actual_device
+        audio_duration_ms = _audio_duration_ms(audio_path)
         metadata = Metadata(
             asr_backend=self.asr_backend.name,
             align_backend=self.config.align_backend,
@@ -70,6 +74,7 @@ class TranscriptionService:
             actual_device=actual_device,
             alignment_strategy=None,
             alignment_token_source=None,
+            timings=Timings(audio_duration_ms=audio_duration_ms),
             requested_features=["asr", *self.config.required_features],
             completed_features=[],
             failed_features=[],
@@ -82,6 +87,7 @@ class TranscriptionService:
                 category="runtime",
                 message="CUDA device not available",
                 backend=self.asr_backend.name,
+                started_at=started_at,
             )
 
         if self.config.policy.runtime_policy == "strict-gpu" and actual_device != "cuda":
@@ -91,8 +97,10 @@ class TranscriptionService:
                 category="runtime",
                 message="strict-gpu policy requires a CUDA device",
                 backend=self.asr_backend.name,
+                started_at=started_at,
             )
 
+        asr_started_at = time.perf_counter()
         try:
             backend_result = self.asr_backend.transcribe(
                 audio_path=audio_path,
@@ -103,6 +111,8 @@ class TranscriptionService:
                 word_timestamps=self.config.word_timestamps,
             )
         except RuntimeError as exc:
+            metadata.timings.asr_ms = _elapsed_ms(asr_started_at)
+            metadata.timings.total_ms = _elapsed_ms(started_at)
             marker = str(exc)
             if marker.startswith("DEPENDENCY_MISSING:"):
                 message = marker.split(":", 1)[1]
@@ -112,6 +122,7 @@ class TranscriptionService:
                     category="dependency",
                     message=f"missing dependency: {message}",
                     backend=self.asr_backend.name,
+                    started_at=started_at,
                 )
             return self._failure_result(
                 metadata=metadata,
@@ -119,15 +130,20 @@ class TranscriptionService:
                 category="runtime",
                 message=str(exc),
                 backend=self.asr_backend.name,
+                started_at=started_at,
             )
         except Exception as exc:  # pragma: no cover - defensive boundary
+            metadata.timings.asr_ms = _elapsed_ms(asr_started_at)
+            metadata.timings.total_ms = _elapsed_ms(started_at)
             return self._failure_result(
                 metadata=metadata,
                 code="INTERNAL_ERROR",
                 category="internal",
                 message=str(exc),
                 backend=self.asr_backend.name,
+                started_at=started_at,
             )
+        metadata.timings.asr_ms = _elapsed_ms(asr_started_at)
 
         metadata.completed_features.append("asr")
         result = TranscriptionResult(
@@ -141,6 +157,11 @@ class TranscriptionService:
             metadata=metadata,
         )
         result = self._apply_optional_features(audio_path, result)
+        result.metadata.timings.total_ms = _elapsed_ms(started_at)
+        result.metadata.timings.real_time_factor = _real_time_factor(
+            result.metadata.timings.total_ms,
+            result.metadata.timings.audio_duration_ms,
+        )
         return self._filter_output_detail(result)
 
     def _filter_output_detail(self, result: TranscriptionResult) -> TranscriptionResult:
@@ -171,7 +192,9 @@ class TranscriptionService:
         speakers = result.speakers
 
         if "alignment" in self.config.required_features:
+            alignment_started_at = time.perf_counter()
             outcome = self.alignment_backend.align(audio_path, result.text, segments, words, result.language)
+            result.metadata.timings.alignment_ms = _elapsed_ms(alignment_started_at)
             result.metadata.alignment_strategy = outcome.strategy
             result.metadata.alignment_token_source = outcome.token_source
             if outcome.words:
@@ -191,7 +214,9 @@ class TranscriptionService:
                 result.metadata.completed_features.append("alignment")
 
         if "diarization" in self.config.required_features:
+            diarization_started_at = time.perf_counter()
             outcome = self.diarization_backend.diarize(segments, words)
+            result.metadata.timings.diarization_ms = _elapsed_ms(diarization_started_at)
             segments = outcome.segments
             words = outcome.words
             speakers = outcome.speakers
@@ -239,6 +264,7 @@ class TranscriptionService:
                     actual_device=result.metadata.actual_device,
                     alignment_strategy=result.metadata.alignment_strategy,
                     alignment_token_source=result.metadata.alignment_token_source,
+                    timings=result.metadata.timings,
                     fallbacks=[],
                     requested_features=result.metadata.requested_features,
                     completed_features=result.metadata.completed_features,
@@ -266,6 +292,7 @@ class TranscriptionService:
                 actual_device=result.metadata.actual_device,
                 alignment_strategy=result.metadata.alignment_strategy,
                 alignment_token_source=result.metadata.alignment_token_source,
+                timings=result.metadata.timings,
                 fallbacks=fallbacks,
                 requested_features=result.metadata.requested_features,
                 completed_features=result.metadata.completed_features,
@@ -301,7 +328,14 @@ class TranscriptionService:
         category: str,
         message: str,
         backend: str,
+        started_at: float | None = None,
     ) -> TranscriptionResult:
+        if started_at is not None and metadata.timings.total_ms == 0:
+            metadata.timings.total_ms = _elapsed_ms(started_at)
+        metadata.timings.real_time_factor = _real_time_factor(
+            metadata.timings.total_ms,
+            metadata.timings.audio_duration_ms,
+        )
         metadata.failed_features = ["asr"]
         return TranscriptionResult(
             schema_version="1.0.0",
@@ -338,6 +372,47 @@ class TranscriptionService:
             write_json(result, output_path)
             return
         writers[output_format](result, output_path)
+
+
+def _elapsed_ms(started_at: float) -> int:
+    return max(0, int((time.perf_counter() - started_at) * 1000))
+
+
+def _real_time_factor(total_ms: int, audio_duration_ms: int) -> float | None:
+    if audio_duration_ms <= 0:
+        return None
+    return total_ms / audio_duration_ms
+
+
+def _audio_duration_ms(audio_path: Path) -> int:
+    try:
+        import torchaudio
+
+        info = torchaudio.info(str(audio_path))
+        if info.sample_rate > 0:
+            return int((info.num_frames / info.sample_rate) * 1000)
+    except Exception:
+        pass
+
+    try:
+        import soundfile as sf
+
+        info = sf.info(str(audio_path))
+        if info.samplerate > 0:
+            return int((info.frames / info.samplerate) * 1000)
+    except Exception:
+        pass
+
+    try:
+        with wave.open(str(audio_path), "rb") as handle:
+            sample_rate = handle.getframerate()
+            frames = handle.getnframes()
+            if sample_rate > 0:
+                return int((frames / sample_rate) * 1000)
+    except Exception:
+        return 0
+
+    return 0
 
 
 @dataclass(slots=True)

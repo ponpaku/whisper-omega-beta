@@ -38,6 +38,14 @@
     "actual_device": "cpu",
     "alignment_strategy": "romanized:ru",
     "alignment_token_source": "text_map",
+    "timings": {
+      "total_ms": 691,
+      "asr_ms": 544,
+      "alignment_ms": 125,
+      "diarization_ms": 0,
+      "audio_duration_ms": 1200,
+      "real_time_factor": 0.5758
+    },
     "fallbacks": [
       {
         "type": "feature",

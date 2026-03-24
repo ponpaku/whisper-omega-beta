@@ -15,6 +15,14 @@
     "actual_device": "cpu",
     "alignment_strategy": null,
     "alignment_token_source": null,
+    "timings": {
+      "total_ms": 2,
+      "asr_ms": 0,
+      "alignment_ms": 0,
+      "diarization_ms": 0,
+      "audio_duration_ms": 0,
+      "real_time_factor": null
+    },
     "fallbacks": [],
     "requested_features": [
       "asr",

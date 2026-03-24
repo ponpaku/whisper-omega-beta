@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from whisper_omega.runtime.models import BackendError, Metadata, Segment, Speaker, TranscriptionResult, Word
+from whisper_omega.runtime.models import BackendError, Metadata, Segment, Speaker, Timings, TranscriptionResult, Word
 
 
 class ModelTests(unittest.TestCase):
@@ -127,6 +127,36 @@ class ModelTests(unittest.TestCase):
                 error_code="GPU_UNAVAILABLE",
                 error_category="runtime",
             )
+
+    def test_metadata_serializes_timings(self) -> None:
+        metadata = Metadata(
+            asr_backend="stub",
+            align_backend="none",
+            diarization_backend="none",
+            device="cpu",
+            requested_device="cpu",
+            actual_device="cpu",
+            timings=Timings(
+                total_ms=100,
+                asr_ms=60,
+                alignment_ms=20,
+                diarization_ms=10,
+                audio_duration_ms=200,
+                real_time_factor=0.5,
+            ),
+        )
+
+        self.assertEqual(
+            metadata.to_dict()["timings"],
+            {
+                "total_ms": 100,
+                "asr_ms": 60,
+                "alignment_ms": 20,
+                "diarization_ms": 10,
+                "audio_duration_ms": 200,
+                "real_time_factor": 0.5,
+            },
+        )
 
 
 if __name__ == "__main__":
