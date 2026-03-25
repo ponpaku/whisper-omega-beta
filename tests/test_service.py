@@ -152,6 +152,72 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result.metadata.alignment_token_source, "text_map")
         self.assertGreaterEqual(result.metadata.timings.alignment_ms, 0)
 
+    def test_permissive_aligned_timestamp_strategy_degrades_to_direct(self) -> None:
+        audio_path = self._write_wav(1000)
+
+        class FailingAlignmentBackend(UnavailableWav2Vec2Backend):
+            def align(self, audio_path, text, segments, words, language):
+                _ = (audio_path, text, segments, words, language)
+                return AlignmentOutcome(
+                    words=[],
+                    strategy="romanized:ru",
+                    token_source="text_map",
+                    backend_errors=[
+                        BackendError(
+                            backend=self.name,
+                            code="ALIGNMENT_MODEL_UNAVAILABLE",
+                            category="backend",
+                            message="alignment backend could not produce word timings",
+                            retryable=False,
+                        )
+                    ],
+                )
+
+        service = TranscriptionService(
+            ServiceConfig(
+                policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                align_backend="wav2vec2",
+                timestamp_strategy="aligned",
+            ),
+            asr_backend=StubBackend(),
+            alignment_backend=FailingAlignmentBackend(),
+        )
+        result = service.transcribe(audio_path)
+
+        self.assertEqual(result.status, "degraded")
+        self.assertEqual(result.metadata.requested_timestamp_strategy, "aligned")
+        self.assertEqual(result.metadata.timestamp_strategy, "direct")
+        self.assertEqual(result.metadata.timestamp_source, "direct")
+        self.assertEqual(result.metadata.timestamp_quality, "exact")
+        self.assertEqual(result.metadata.failed_features, [])
+        self.assertEqual(result.metadata.fallbacks[0].type, "quality")
+        self.assertEqual(result.metadata.fallbacks[0].from_value, "aligned")
+        self.assertEqual(result.metadata.fallbacks[0].to_value, "direct")
+
+    def test_hybrid_timestamp_strategy_skips_alignment_for_confident_words(self) -> None:
+        audio_path = self._write_wav(1000)
+
+        class ExplodingAlignmentBackend(UnavailableWav2Vec2Backend):
+            def align(self, audio_path, text, segments, words, language):
+                raise AssertionError("alignment should not run for confident hybrid output")
+
+        service = TranscriptionService(
+            ServiceConfig(
+                policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                align_backend="wav2vec2",
+                timestamp_strategy="hybrid_selective_align",
+            ),
+            asr_backend=StubBackend(),
+            alignment_backend=ExplodingAlignmentBackend(),
+        )
+        result = service.transcribe(audio_path)
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.metadata.timestamp_strategy, "hybrid_selective_align")
+        self.assertEqual(result.metadata.timestamp_source, "direct")
+        self.assertEqual(result.metadata.alignment_applied_segments, 0)
+        self.assertEqual(result.metadata.alignment_skipped_segments, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

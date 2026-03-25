@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 ResultStatus = Literal["success", "degraded", "failure"]
@@ -130,8 +130,19 @@ class Metadata:
     device: str
     requested_device: str
     actual_device: str
+    requested_timestamp_strategy: str | None = None
+    timestamp_strategy: str | None = None
+    timestamp_source: str | None = None
+    timestamp_quality: str | None = None
     alignment_strategy: str | None = None
     alignment_token_source: str | None = None
+    shard_count: int | None = None
+    microbatch_count: int | None = None
+    overlap_ms: int | None = None
+    seam_repair_count: int | None = None
+    stitch_conflicts: int | None = None
+    alignment_applied_segments: int | None = None
+    alignment_skipped_segments: int | None = None
     timings: Timings = field(default_factory=Timings)
     fallbacks: list[Fallback] = field(default_factory=list)
     requested_features: list[str] = field(default_factory=list)
@@ -146,14 +157,28 @@ class Metadata:
             "device": self.device,
             "requested_device": self.requested_device,
             "actual_device": self.actual_device,
+            "requested_timestamp_strategy": self.requested_timestamp_strategy,
+            "timestamp_strategy": self.timestamp_strategy,
+            "timestamp_source": self.timestamp_source,
+            "timestamp_quality": self.timestamp_quality,
             "alignment_strategy": self.alignment_strategy,
             "alignment_token_source": self.alignment_token_source,
+            "shard_count": self.shard_count,
+            "microbatch_count": self.microbatch_count,
+            "overlap_ms": self.overlap_ms,
+            "seam_repair_count": self.seam_repair_count,
+            "stitch_conflicts": self.stitch_conflicts,
+            "alignment_applied_segments": self.alignment_applied_segments,
+            "alignment_skipped_segments": self.alignment_skipped_segments,
             "timings": self.timings.to_dict(),
             "fallbacks": [item.to_dict() for item in self.fallbacks],
             "requested_features": self.requested_features,
             "completed_features": self.completed_features,
             "failed_features": self.failed_features,
         }
+
+    def copy_with(self, **changes) -> "Metadata":
+        return replace(self, **changes)
 
 
 @dataclass(slots=True)

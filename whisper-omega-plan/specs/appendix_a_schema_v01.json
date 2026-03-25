@@ -255,6 +255,17 @@
         "device",
         "requested_device",
         "actual_device",
+        "requested_timestamp_strategy",
+        "timestamp_strategy",
+        "timestamp_source",
+        "timestamp_quality",
+        "shard_count",
+        "microbatch_count",
+        "overlap_ms",
+        "seam_repair_count",
+        "stitch_conflicts",
+        "alignment_applied_segments",
+        "alignment_skipped_segments",
         "timings",
         "fallbacks",
         "requested_features",
@@ -296,6 +307,30 @@
             "cuda"
           ]
         },
+        "requested_timestamp_strategy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timestamp_strategy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timestamp_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timestamp_quality": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "alignment_strategy": {
           "type": [
             "string",
@@ -307,6 +342,55 @@
             "string",
             "null"
           ]
+        },
+        "shard_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "microbatch_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "overlap_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "seam_repair_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "stitch_conflicts": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "alignment_applied_segments": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "alignment_skipped_segments": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
         },
         "timings": {
           "$ref": "#/$defs/timings"
