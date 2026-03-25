@@ -7,6 +7,7 @@ import sys
 import os
 import importlib.util
 import time
+import tempfile
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,8 +25,8 @@ from whisper_omega.diarize.base import (
 )
 from whisper_omega.io.writers import write_json, write_srt, write_txt, write_vtt
 from whisper_omega.runtime.codes import CANONICAL_ISSUE_CODES
-from whisper_omega.runtime.models import BackendError, Fallback, Metadata, Timings, TranscriptionResult
-from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device
+from whisper_omega.runtime.models import BackendError, Fallback, Metadata, Segment, Timings, TranscriptionResult, Word
+from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device, resolve_timestamp_strategy
 
 
 @dataclass(slots=True)
@@ -41,6 +42,7 @@ class ServiceConfig:
     language: str | None = None
     batch_size: int | None = None
     word_timestamps: bool = True
+    timestamp_strategy: str | None = None
     include_segments: bool = True
     include_words: bool = True
 
@@ -54,6 +56,12 @@ class TranscriptionService:
         diarization_backend: DiarizationBackend | None = None,
     ) -> None:
         self.config = config
+        self.config.timestamp_strategy = resolve_timestamp_strategy(
+            self.config.timestamp_strategy,
+            word_timestamps=self.config.word_timestamps,
+            align_backend=self.config.align_backend,
+            required_features=self.config.required_features,
+        )
         self.asr_backend = asr_backend or FasterWhisperBackend()
         self.alignment_backend = alignment_backend or self._make_alignment_backend(config.align_backend)
         self.diarization_backend = diarization_backend or self._make_diarization_backend(config.diarize_backend)
@@ -72,8 +80,19 @@ class TranscriptionService:
             device=actual_device,
             requested_device=requested_device,
             actual_device=actual_device,
+            requested_timestamp_strategy=self.config.timestamp_strategy,
+            timestamp_strategy=self.config.timestamp_strategy,
+            timestamp_source="direct",
+            timestamp_quality="exact",
             alignment_strategy=None,
             alignment_token_source=None,
+            shard_count=None,
+            microbatch_count=None,
+            overlap_ms=None,
+            seam_repair_count=None,
+            stitch_conflicts=None,
+            alignment_applied_segments=0,
+            alignment_skipped_segments=0,
             timings=Timings(audio_duration_ms=audio_duration_ms),
             requested_features=["asr", *self.config.required_features],
             completed_features=[],
@@ -108,7 +127,7 @@ class TranscriptionService:
                 language=self.config.language,
                 device=actual_device,
                 batch_size=self.config.batch_size,
-                word_timestamps=self.config.word_timestamps,
+                word_timestamps=self.config.timestamp_strategy != "segment_only",
             )
         except RuntimeError as exc:
             metadata.timings.asr_ms = _elapsed_ms(asr_started_at)
@@ -156,6 +175,14 @@ class TranscriptionService:
             speakers=[],
             metadata=metadata,
         )
+        result = self._apply_timestamp_strategy(audio_path, result)
+        if result.status == "failure":
+            result.metadata.timings.total_ms = _elapsed_ms(started_at)
+            result.metadata.timings.real_time_factor = _real_time_factor(
+                result.metadata.timings.total_ms,
+                result.metadata.timings.audio_duration_ms,
+            )
+            return self._filter_output_detail(result)
         result = self._apply_optional_features(audio_path, result)
         result.metadata.timings.total_ms = _elapsed_ms(started_at)
         result.metadata.timings.real_time_factor = _real_time_factor(
@@ -163,6 +190,372 @@ class TranscriptionService:
             result.metadata.timings.audio_duration_ms,
         )
         return self._filter_output_detail(result)
+
+    def _apply_timestamp_strategy(self, audio_path: Path, result: TranscriptionResult) -> TranscriptionResult:
+        strategy = self.config.timestamp_strategy
+        if strategy == "segment_only":
+            result.metadata.timestamp_strategy = "segment_only"
+            result.metadata.timestamp_source = "segments"
+            result.metadata.timestamp_quality = "segment_only"
+            result.metadata.alignment_applied_segments = 0
+            result.metadata.alignment_skipped_segments = len(result.segments)
+            return TranscriptionResult(
+                schema_version=result.schema_version,
+                status=result.status,
+                text=result.text,
+                language=result.language,
+                segments=result.segments,
+                words=[],
+                speakers=result.speakers,
+                metadata=result.metadata,
+            )
+
+        if strategy == "direct":
+            result.metadata.timestamp_strategy = "direct"
+            result.metadata.timestamp_source = "direct"
+            result.metadata.timestamp_quality = "exact" if result.words else "segment_only"
+            result.metadata.alignment_applied_segments = 0
+            result.metadata.alignment_skipped_segments = len(result.segments)
+            return result
+
+        if strategy == "direct_microbatch":
+            return self._apply_microbatch_timestamp_strategy(audio_path, result, repair=False)
+
+        if strategy == "direct_microbatch_repair":
+            return self._apply_microbatch_timestamp_strategy(audio_path, result, repair=True)
+
+        if strategy == "aligned":
+            return self._apply_alignment_timestamp_strategy(
+                audio_path=audio_path,
+                result=result,
+                degrade_to="direct" if result.words else "segment_only",
+                strategy_label="aligned",
+                source_on_success="alignment",
+                quality_on_success="refined",
+            )
+
+        if strategy == "hybrid_selective_align":
+            if not _should_refine_timestamps(result.words):
+                result.metadata.timestamp_strategy = "hybrid_selective_align"
+                result.metadata.timestamp_source = "direct"
+                result.metadata.timestamp_quality = "exact" if result.words else "segment_only"
+                result.metadata.alignment_applied_segments = 0
+                result.metadata.alignment_skipped_segments = len(result.segments)
+                return result
+            return self._apply_alignment_timestamp_strategy(
+                audio_path=audio_path,
+                result=result,
+                degrade_to="direct" if result.words else "segment_only",
+                strategy_label="hybrid_selective_align",
+                source_on_success="mixed",
+                quality_on_success="refined",
+            )
+
+        return self._timestamp_strategy_failure(
+            result=result,
+            code="TIMESTAMP_STRATEGY_UNAVAILABLE",
+            message=f"timestamp strategy {strategy!r} is not implemented",
+            failed_features=[],
+            fallbacks=[],
+        )
+
+    def _apply_microbatch_timestamp_strategy(
+        self,
+        audio_path: Path,
+        result: TranscriptionResult,
+        *,
+        repair: bool,
+    ) -> TranscriptionResult:
+        shard_plan = _build_microbatch_plan(result.metadata.timings.audio_duration_ms)
+        result.metadata.overlap_ms = shard_plan.overlap_ms
+        result.metadata.shard_count = len(shard_plan.windows)
+        result.metadata.microbatch_count = len(shard_plan.windows)
+        result.metadata.seam_repair_count = 0
+        result.metadata.stitch_conflicts = 0
+        result.metadata.alignment_applied_segments = 0
+        result.metadata.alignment_skipped_segments = len(result.segments)
+        if len(shard_plan.windows) <= 1:
+            result.metadata.timestamp_strategy = "direct_microbatch_repair" if repair else "direct_microbatch"
+            result.metadata.timestamp_source = "direct"
+            result.metadata.timestamp_quality = "exact" if result.words else "segment_only"
+            return result
+
+        try:
+            shard_results = _run_microbatch_shards(
+                backend=self.asr_backend,
+                audio_path=audio_path,
+                model_name=self.config.model_name,
+                language=self.config.language,
+                device=result.metadata.actual_device,
+                batch_size=self.config.batch_size,
+                windows=shard_plan.windows,
+            )
+        except _MicrobatchError as exc:
+            return self._handle_microbatch_unavailable(
+                result=result,
+                code=exc.code,
+                message=exc.message,
+            )
+
+        stitched = _stitch_microbatch_results(shard_results, repair=repair)
+        result.metadata.timestamp_strategy = "direct_microbatch_repair" if repair else "direct_microbatch"
+        result.metadata.timestamp_source = "stitched_direct"
+        result.metadata.timestamp_quality = "refined" if repair else "estimated"
+        result.metadata.shard_count = len(shard_results)
+        result.metadata.microbatch_count = len(shard_results)
+        result.metadata.seam_repair_count = stitched.seam_repairs
+        result.metadata.stitch_conflicts = stitched.conflicts
+
+        if stitched.conflicts and not repair:
+            if self.config.policy.runtime_policy in {"strict", "strict-gpu"}:
+                return self._timestamp_strategy_failure(
+                    result=result,
+                    code="TIMESTAMP_STITCH_CONFLICT",
+                    message="microbatch stitching produced unresolved seam conflicts",
+                    failed_features=[],
+                    fallbacks=[],
+                )
+            degrade_to = "direct" if result.words else "segment_only"
+            return TranscriptionResult(
+                schema_version="1.0.0",
+                status="degraded",
+                text=result.text,
+                language=result.language,
+                segments=result.segments,
+                words=result.words if degrade_to == "direct" else [],
+                speakers=result.speakers,
+                metadata=result.metadata.copy_with(
+                    timestamp_strategy=degrade_to,
+                    timestamp_source="direct" if degrade_to == "direct" else "segments",
+                    timestamp_quality="exact" if degrade_to == "direct" else "segment_only",
+                    fallbacks=[
+                        *result.metadata.fallbacks,
+                        Fallback(
+                            type="quality",
+                            from_value="direct_microbatch",
+                            to_value=degrade_to,
+                            reason="TIMESTAMP_STITCH_CONFLICT",
+                        ),
+                    ],
+                ),
+                error_code="TIMESTAMP_STITCH_CONFLICT",
+                error_category="runtime",
+                backend_errors=[
+                    BackendError(
+                        backend=self.asr_backend.name,
+                        code="TIMESTAMP_STITCH_CONFLICT",
+                        category="runtime",
+                        message="microbatch stitching produced unresolved seam conflicts",
+                        retryable=True,
+                    )
+                ],
+            )
+
+        if stitched.conflicts and repair and self.config.policy.runtime_policy in {"strict", "strict-gpu"} and stitched.seam_repairs < stitched.conflicts:
+            return self._timestamp_strategy_failure(
+                result=result,
+                code="TIMESTAMP_SEAM_REPAIR_FAILED",
+                message="microbatch seam repair could not resolve all conflicts",
+                failed_features=[],
+                fallbacks=[],
+            )
+
+        return TranscriptionResult(
+            schema_version=result.schema_version,
+            status=result.status,
+            text=stitched.text,
+            language=result.language,
+            segments=stitched.segments,
+            words=stitched.words,
+            speakers=result.speakers,
+            metadata=result.metadata,
+        )
+
+    def _handle_microbatch_unavailable(
+        self,
+        *,
+        result: TranscriptionResult,
+        code: str,
+        message: str,
+    ) -> TranscriptionResult:
+        if self.config.policy.runtime_policy in {"strict", "strict-gpu"}:
+            return self._timestamp_strategy_failure(
+                result=result,
+                code=code,
+                message=message,
+                failed_features=[],
+                fallbacks=[],
+            )
+        degrade_to = "direct" if result.words else "segment_only"
+        return TranscriptionResult(
+            schema_version="1.0.0",
+            status="degraded",
+            text=result.text,
+            language=result.language,
+            segments=result.segments,
+            words=result.words if degrade_to == "direct" else [],
+            speakers=result.speakers,
+            metadata=result.metadata.copy_with(
+                timestamp_strategy=degrade_to,
+                timestamp_source="direct" if degrade_to == "direct" else "segments",
+                timestamp_quality="exact" if degrade_to == "direct" else "segment_only",
+                fallbacks=[
+                    *result.metadata.fallbacks,
+                    Fallback(
+                        type="quality",
+                        from_value=self.config.timestamp_strategy,
+                        to_value=degrade_to,
+                        reason=code,
+                    ),
+                ],
+            ),
+            error_code=code,
+            error_category="runtime",
+            backend_errors=[
+                BackendError(
+                    backend=self.asr_backend.name,
+                    code=code,
+                    category="runtime",
+                    message=message,
+                    retryable=True,
+                )
+            ],
+        )
+
+    def _apply_alignment_timestamp_strategy(
+        self,
+        *,
+        audio_path: Path,
+        result: TranscriptionResult,
+        degrade_to: str,
+        strategy_label: str,
+        source_on_success: str,
+        quality_on_success: str,
+    ) -> TranscriptionResult:
+        alignment_started_at = time.perf_counter()
+        outcome = self.alignment_backend.align(
+            audio_path,
+            result.text,
+            result.segments,
+            result.words,
+            result.language,
+        )
+        result.metadata.timings.alignment_ms = _elapsed_ms(alignment_started_at)
+        if outcome.backend_errors:
+            return self._handle_timestamp_strategy_degradation(
+                result=result,
+                code=outcome.backend_errors[0].code,
+                category=outcome.backend_errors[0].category,
+                backend_errors=outcome.backend_errors,
+                degrade_to=degrade_to,
+            )
+
+        words = outcome.words if outcome.words else result.words
+        result.metadata.timestamp_strategy = strategy_label
+        result.metadata.timestamp_source = source_on_success
+        result.metadata.timestamp_quality = quality_on_success if words else "segment_only"
+        result.metadata.alignment_strategy = outcome.strategy
+        result.metadata.alignment_token_source = outcome.token_source
+        result.metadata.alignment_applied_segments = len(result.segments)
+        result.metadata.alignment_skipped_segments = 0
+        return TranscriptionResult(
+            schema_version=result.schema_version,
+            status=result.status,
+            text=result.text,
+            language=result.language,
+            segments=result.segments,
+            words=words,
+            speakers=result.speakers,
+            metadata=result.metadata,
+        )
+
+    def _handle_timestamp_strategy_degradation(
+        self,
+        *,
+        result: TranscriptionResult,
+        code: str,
+        category: str,
+        backend_errors: list[BackendError],
+        degrade_to: str,
+    ) -> TranscriptionResult:
+        fallback = Fallback(
+            type="quality",
+            from_value=self.config.timestamp_strategy,
+            to_value=degrade_to,
+            reason=code,
+        )
+        if self.config.policy.runtime_policy in {"strict", "strict-gpu"}:
+            return self._timestamp_strategy_failure(
+                result=result,
+                code=code,
+                message=backend_errors[0].message,
+                failed_features=[],
+                fallbacks=[],
+                category=category,
+                backend_errors=backend_errors,
+            )
+
+        metadata = result.metadata.copy_with(
+            timestamp_strategy=degrade_to,
+            timestamp_source="direct" if degrade_to == "direct" else "segments",
+            timestamp_quality="exact" if degrade_to == "direct" else "segment_only",
+            alignment_applied_segments=0,
+            alignment_skipped_segments=len(result.segments),
+            fallbacks=[*result.metadata.fallbacks, fallback],
+            failed_features=result.metadata.failed_features,
+        )
+        words = result.words if degrade_to == "direct" else []
+        return TranscriptionResult(
+            schema_version="1.0.0",
+            status="degraded",
+            text=result.text,
+            language=result.language,
+            segments=result.segments,
+            words=words,
+            speakers=result.speakers,
+            metadata=metadata,
+            error_code=code,
+            error_category=category,
+            backend_errors=backend_errors,
+        )
+
+    def _timestamp_strategy_failure(
+        self,
+        *,
+        result: TranscriptionResult,
+        code: str,
+        message: str,
+        failed_features: list[str],
+        fallbacks: list[Fallback],
+        category: str = "runtime",
+        backend_errors: list[BackendError] | None = None,
+    ) -> TranscriptionResult:
+        error_items = backend_errors or [
+            BackendError(
+                backend=self.alignment_backend.name if "ALIGNMENT" in code else self.asr_backend.name,
+                code=code,
+                category=category,
+                message=message,
+                retryable=category == "runtime",
+            )
+        ]
+        metadata = result.metadata.copy_with(
+            fallbacks=fallbacks,
+            failed_features=failed_features,
+        )
+        return TranscriptionResult(
+            schema_version="1.0.0",
+            status="failure",
+            text=result.text,
+            language=result.language,
+            segments=result.segments,
+            words=result.words,
+            speakers=result.speakers,
+            metadata=metadata,
+            error_code=code,
+            error_category=category,
+            backend_errors=error_items,
+        )
 
     def _filter_output_detail(self, result: TranscriptionResult) -> TranscriptionResult:
         segments = result.segments if self.config.include_segments else []
@@ -184,34 +577,39 @@ class TranscriptionService:
         )
 
     def _apply_optional_features(self, audio_path: Path, result: TranscriptionResult) -> TranscriptionResult:
-        failed: list[str] = []
-        backend_errors: list[BackendError] = []
-        fallbacks: list[Fallback] = []
+        failed: list[str] = list(result.metadata.failed_features)
+        backend_errors: list[BackendError] = list(result.backend_errors)
+        fallbacks: list[Fallback] = list(result.metadata.fallbacks)
         words = result.words
         segments = result.segments
         speakers = result.speakers
 
         if "alignment" in self.config.required_features:
-            alignment_started_at = time.perf_counter()
-            outcome = self.alignment_backend.align(audio_path, result.text, segments, words, result.language)
-            result.metadata.timings.alignment_ms = _elapsed_ms(alignment_started_at)
-            result.metadata.alignment_strategy = outcome.strategy
-            result.metadata.alignment_token_source = outcome.token_source
-            if outcome.words:
-                words = outcome.words
-            if outcome.backend_errors:
-                failed.append("alignment")
-                backend_errors.extend(outcome.backend_errors)
-                fallbacks.append(
-                    Fallback(
-                        type="feature",
-                        from_value="alignment",
-                        to_value="segment_only",
-                        reason=outcome.backend_errors[0].code,
-                    )
-                )
+            if _alignment_feature_already_satisfied(result.metadata):
+                if "alignment" not in result.metadata.completed_features:
+                    result.metadata.completed_features.append("alignment")
             else:
-                result.metadata.completed_features.append("alignment")
+                alignment_started_at = time.perf_counter()
+                outcome = self.alignment_backend.align(audio_path, result.text, segments, words, result.language)
+                result.metadata.timings.alignment_ms = _elapsed_ms(alignment_started_at)
+                result.metadata.alignment_strategy = outcome.strategy
+                result.metadata.alignment_token_source = outcome.token_source
+                if outcome.words:
+                    words = outcome.words
+                if outcome.backend_errors:
+                    failed.append("alignment")
+                    backend_errors.extend(outcome.backend_errors)
+                    fallbacks.append(
+                        Fallback(
+                            type="feature",
+                            from_value="alignment",
+                            to_value="segment_only",
+                            reason=outcome.backend_errors[0].code,
+                        )
+                    )
+                else:
+                    if "alignment" not in result.metadata.completed_features:
+                        result.metadata.completed_features.append("alignment")
 
         if "diarization" in self.config.required_features:
             diarization_started_at = time.perf_counter()
@@ -232,7 +630,8 @@ class TranscriptionService:
                     )
                 )
             else:
-                result.metadata.completed_features.append("diarization")
+                if "diarization" not in result.metadata.completed_features:
+                    result.metadata.completed_features.append("diarization")
 
         if not failed:
             return TranscriptionResult(
@@ -244,6 +643,9 @@ class TranscriptionService:
                 words=words,
                 speakers=speakers,
                 metadata=result.metadata,
+                error_code=result.error_code,
+                error_category=result.error_category,
+                backend_errors=result.backend_errors,
             )
 
         if self.config.policy.runtime_policy in {"strict", "strict-gpu"}:
@@ -255,23 +657,12 @@ class TranscriptionService:
                 segments=segments,
                 words=words,
                 speakers=speakers,
-                metadata=Metadata(
-                    asr_backend=result.metadata.asr_backend,
-                    align_backend=result.metadata.align_backend,
-                    diarization_backend=result.metadata.diarization_backend,
-                    device=result.metadata.device,
-                    requested_device=result.metadata.requested_device,
-                    actual_device=result.metadata.actual_device,
-                    alignment_strategy=result.metadata.alignment_strategy,
-                    alignment_token_source=result.metadata.alignment_token_source,
-                    timings=result.metadata.timings,
+                metadata=result.metadata.copy_with(
                     fallbacks=[],
-                    requested_features=result.metadata.requested_features,
-                    completed_features=result.metadata.completed_features,
                     failed_features=failed,
                 ),
-                error_code=backend_errors[0].code,
-                error_category=backend_errors[0].category,
+                error_code=result.error_code or backend_errors[0].code,
+                error_category=result.error_category or backend_errors[0].category,
                 backend_errors=backend_errors,
             )
 
@@ -283,23 +674,12 @@ class TranscriptionService:
             segments=segments,
             words=words,
             speakers=speakers,
-            metadata=Metadata(
-                asr_backend=result.metadata.asr_backend,
-                align_backend=result.metadata.align_backend,
-                diarization_backend=result.metadata.diarization_backend,
-                device=result.metadata.device,
-                requested_device=result.metadata.requested_device,
-                actual_device=result.metadata.actual_device,
-                alignment_strategy=result.metadata.alignment_strategy,
-                alignment_token_source=result.metadata.alignment_token_source,
-                timings=result.metadata.timings,
+            metadata=result.metadata.copy_with(
                 fallbacks=fallbacks,
-                requested_features=result.metadata.requested_features,
-                completed_features=result.metadata.completed_features,
                 failed_features=failed,
             ),
-            error_code=backend_errors[0].code,
-            error_category=backend_errors[0].category,
+            error_code=result.error_code or backend_errors[0].code,
+            error_category=result.error_category or backend_errors[0].category,
             backend_errors=backend_errors,
         )
 
@@ -413,6 +793,238 @@ def _audio_duration_ms(audio_path: Path) -> int:
         return 0
 
     return 0
+
+
+@dataclass(slots=True)
+class _ShardWindow:
+    start: float
+    end: float
+
+
+@dataclass(slots=True)
+class _MicrobatchPlan:
+    windows: list[_ShardWindow]
+    overlap_ms: int
+
+
+@dataclass(slots=True)
+class _ShardTranscription:
+    window: _ShardWindow
+    text: str
+    segments: list[Segment]
+    words: list[Word]
+
+
+@dataclass(slots=True)
+class _StitchedTranscription:
+    text: str
+    segments: list[Segment]
+    words: list[Word]
+    conflicts: int
+    seam_repairs: int
+
+
+@dataclass(slots=True)
+class _MicrobatchError(Exception):
+    code: str
+    message: str
+
+
+def _build_microbatch_plan(audio_duration_ms: int) -> _MicrobatchPlan:
+    if audio_duration_ms <= 0:
+        return _MicrobatchPlan(windows=[_ShardWindow(start=0.0, end=0.0)], overlap_ms=400)
+    total_sec = audio_duration_ms / 1000.0
+    shard_sec = 20.0
+    overlap_sec = 0.4
+    if total_sec <= shard_sec:
+        return _MicrobatchPlan(windows=[_ShardWindow(start=0.0, end=total_sec)], overlap_ms=int(overlap_sec * 1000))
+    windows: list[_ShardWindow] = []
+    cursor = 0.0
+    while cursor < total_sec:
+        end = min(total_sec, cursor + shard_sec)
+        windows.append(_ShardWindow(start=cursor, end=end))
+        if end >= total_sec:
+            break
+        cursor = max(0.0, end - overlap_sec)
+    return _MicrobatchPlan(windows=windows, overlap_ms=int(overlap_sec * 1000))
+
+
+def _run_microbatch_shards(
+    *,
+    backend: ASRBackend,
+    audio_path: Path,
+    model_name: str,
+    language: str | None,
+    device: str,
+    batch_size: int | None,
+    windows: list[_ShardWindow],
+) -> list[_ShardTranscription]:
+    if audio_path.suffix.lower() != ".wav":
+        raise _MicrobatchError(
+            code="TIMESTAMP_STRATEGY_UNAVAILABLE",
+            message="microbatch timestamp strategies currently require WAV input",
+        )
+    shard_results: list[_ShardTranscription] = []
+    for window in windows:
+        shard_path = _write_wav_shard(audio_path, window)
+        try:
+            backend_result = backend.transcribe(
+                audio_path=shard_path,
+                model_name=model_name,
+                language=language,
+                device=device,
+                batch_size=batch_size,
+                word_timestamps=True,
+            )
+        finally:
+            shard_path.unlink(missing_ok=True)
+        shard_results.append(
+            _ShardTranscription(
+                window=window,
+                text=backend_result.text,
+                segments=[_offset_segment(segment, window.start) for segment in backend_result.segments],
+                words=[_offset_word(word, window.start) for word in backend_result.words],
+            )
+        )
+    return shard_results
+
+
+def _write_wav_shard(audio_path: Path, window: _ShardWindow) -> Path:
+    with wave.open(str(audio_path), "rb") as source:
+        sample_rate = source.getframerate()
+        sample_width = source.getsampwidth()
+        channels = source.getnchannels()
+        start_frame = max(0, int(window.start * sample_rate))
+        end_frame = max(start_frame, int(window.end * sample_rate))
+        source.setpos(start_frame)
+        frames = source.readframes(end_frame - start_frame)
+    handle = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    handle.close()
+    shard_path = Path(handle.name)
+    with wave.open(str(shard_path), "wb") as sink:
+        sink.setnchannels(channels)
+        sink.setsampwidth(sample_width)
+        sink.setframerate(sample_rate)
+        sink.writeframes(frames)
+    return shard_path
+
+
+def _offset_segment(segment: Segment, offset: float) -> Segment:
+    return Segment(
+        id=segment.id,
+        start=segment.start + offset,
+        end=segment.end + offset,
+        text=segment.text,
+        speaker=segment.speaker,
+    )
+
+
+def _offset_word(word: Word, offset: float) -> Word:
+    return Word(
+        text=word.text,
+        start=word.start + offset,
+        end=word.end + offset,
+        speaker=word.speaker,
+        confidence=word.confidence,
+    )
+
+
+def _stitch_microbatch_results(shards: list[_ShardTranscription], *, repair: bool) -> _StitchedTranscription:
+    merged_words: list[Word] = []
+    conflicts = 0
+    seam_repairs = 0
+    for shard in shards:
+        for word in shard.words:
+            if merged_words and word.start < merged_words[-1].end:
+                conflicts += 1
+                if repair:
+                    seam_repairs += 1
+                    candidate = _choose_repaired_word(merged_words[-1], word)
+                    merged_words[-1] = candidate
+                    continue
+            if merged_words and _looks_like_duplicate(merged_words[-1], word):
+                if repair:
+                    seam_repairs += 1
+                    merged_words[-1] = _choose_repaired_word(merged_words[-1], word)
+                continue
+            merged_words.append(word)
+    if merged_words:
+        text = " ".join(word.text for word in merged_words).strip()
+        segments = _segments_from_words(merged_words)
+    else:
+        text = " ".join(shard.text for shard in shards if shard.text).strip()
+        segments = _merge_segments(shards)
+    return _StitchedTranscription(
+        text=text,
+        segments=segments,
+        words=merged_words,
+        conflicts=conflicts,
+        seam_repairs=seam_repairs,
+    )
+
+
+def _looks_like_duplicate(previous: Word, current: Word) -> bool:
+    if previous.text != current.text:
+        return False
+    return abs(previous.start - current.start) <= 0.5 or current.start <= previous.end
+
+
+def _choose_repaired_word(previous: Word, current: Word) -> Word:
+    previous_score = previous.confidence if previous.confidence is not None else -1.0
+    current_score = current.confidence if current.confidence is not None else -1.0
+    if current_score > previous_score:
+        return current
+    if current_score == previous_score and current.end > previous.end:
+        return current
+    return previous
+
+
+def _segments_from_words(words: list[Word]) -> list[Segment]:
+    text = " ".join(word.text for word in words).strip()
+    return [
+        Segment(
+            id=0,
+            start=words[0].start,
+            end=words[-1].end,
+            text=text,
+            speaker=None,
+        )
+    ]
+
+
+def _merge_segments(shards: list[_ShardTranscription]) -> list[Segment]:
+    merged: list[Segment] = []
+    for shard in shards:
+        for segment in shard.segments:
+            if merged and segment.start < merged[-1].end:
+                merged[-1] = Segment(
+                    id=merged[-1].id,
+                    start=merged[-1].start,
+                    end=max(merged[-1].end, segment.end),
+                    text=" ".join(part for part in [merged[-1].text, segment.text] if part).strip(),
+                    speaker=merged[-1].speaker,
+                )
+            else:
+                merged.append(
+                    Segment(
+                        id=len(merged),
+                        start=segment.start,
+                        end=segment.end,
+                        text=segment.text,
+                        speaker=segment.speaker,
+                    )
+                )
+    return merged
+
+
+def _should_refine_timestamps(words) -> bool:
+    if not words:
+        return True
+    return any(word.confidence is None or word.confidence < 0.5 for word in words)
+
+
+def _alignment_feature_already_satisfied(metadata: Metadata) -> bool:
+    return metadata.timestamp_source in {"alignment", "mixed"} and metadata.alignment_strategy is not None
 
 
 @dataclass(slots=True)

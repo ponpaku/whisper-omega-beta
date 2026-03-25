@@ -11,7 +11,13 @@ import click
 from whisper_omega.compat.whisperx import map_whisperx_options
 from whisper_omega.runtime.codes import EXIT_CODES
 from whisper_omega.runtime.models import ResultStatus
-from whisper_omega.runtime.policy import PolicyConfig, UsageError, validate_cli_constraints
+from whisper_omega.runtime.policy import (
+    TIMESTAMP_STRATEGY_CHOICES,
+    PolicyConfig,
+    UsageError,
+    resolve_timestamp_strategy,
+    validate_cli_constraints,
+)
 from whisper_omega.runtime.service import DoctorReport, ServiceConfig, TranscriptionService
 
 
@@ -74,6 +80,7 @@ def _run_transcribe(
     num_speakers: int | None,
     min_speakers: int | None,
     max_speakers: int | None,
+    timestamp_strategy: str | None,
     word_timestamps: bool,
     include_segments: bool,
     include_words: bool,
@@ -116,6 +123,16 @@ def _run_transcribe(
     except UsageError as exc:
         click.echo(f"usage error: {exc}", err=True)
         return EXIT_CODES["usage"]
+    try:
+        resolved_timestamp_strategy = resolve_timestamp_strategy(
+            timestamp_strategy,
+            word_timestamps=word_timestamps,
+            align_backend=align_backend,
+            required_features=normalized_required,
+        )
+    except UsageError as exc:
+        click.echo(f"usage error: {exc}", err=True)
+        return EXIT_CODES["usage"]
 
     config = ServiceConfig(
         policy=PolicyConfig(runtime_policy=runtime_policy, device=device),
@@ -129,6 +146,7 @@ def _run_transcribe(
         language=language,
         batch_size=batch_size,
         word_timestamps=word_timestamps,
+        timestamp_strategy=resolved_timestamp_strategy,
         include_segments=include_segments,
         include_words=include_words,
     )
@@ -193,6 +211,7 @@ def main() -> None:
 @click.option("--num-speakers", type=int)
 @click.option("--min-speakers", type=int)
 @click.option("--max-speakers", type=int)
+@click.option("--timestamp-strategy", type=click.Choice(TIMESTAMP_STRATEGY_CHOICES))
 @click.option("--word-timestamps/--no-word-timestamps", default=True, show_default=True)
 @click.option("--include-segments/--no-include-segments", default=True, show_default=True)
 @click.option("--include-words/--no-include-words", default=True, show_default=True)
@@ -215,6 +234,7 @@ def transcribe(
     num_speakers: int | None,
     min_speakers: int | None,
     max_speakers: int | None,
+    timestamp_strategy: str | None,
     word_timestamps: bool,
     include_segments: bool,
     include_words: bool,
@@ -240,6 +260,7 @@ def transcribe(
             num_speakers=num_speakers,
             min_speakers=min_speakers,
             max_speakers=max_speakers,
+            timestamp_strategy=timestamp_strategy,
             word_timestamps=word_timestamps,
             include_segments=include_segments,
             include_words=include_words,
@@ -308,6 +329,7 @@ def whisperx(
             num_speakers=None,
             min_speakers=None,
             max_speakers=None,
+            timestamp_strategy="aligned" if compat.require_alignment else None,
             word_timestamps=True,
             include_segments=True,
             include_words=True,

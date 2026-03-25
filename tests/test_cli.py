@@ -799,6 +799,61 @@ class CliTests(unittest.TestCase):
         self.assertFalse(captured["word_timestamps"])
         payload = extract_json(result.output)
         self.assertEqual(payload["words"], [])
+        self.assertEqual(payload["metadata"]["timestamp_strategy"], "segment_only")
+        self.assertEqual(payload["metadata"]["timestamp_source"], "segments")
+        self.assertEqual(payload["metadata"]["timestamp_quality"], "segment_only")
+
+    def test_transcribe_accepts_explicit_timestamp_strategy(self) -> None:
+        with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:
+            service = service_cls.return_value
+            from whisper_omega.runtime.service import ServiceConfig, TranscriptionService
+            from whisper_omega.runtime.policy import PolicyConfig
+
+            real_service = TranscriptionService(
+                ServiceConfig(
+                    policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                    timestamp_strategy="direct",
+                ),
+                asr_backend=StubBackend(),
+            )
+            service.transcribe.side_effect = real_service.transcribe
+            service.write_output.side_effect = real_service.write_output
+            service.config = real_service.config
+
+            result = self.runner.invoke(
+                main,
+                [
+                    "transcribe",
+                    str(self.audio_path),
+                    "--device",
+                    "cpu",
+                    "--timestamp-strategy",
+                    "direct",
+                    "--emit-result-json",
+                    "always",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        payload = extract_json(result.output)
+        self.assertEqual(payload["metadata"]["requested_timestamp_strategy"], "direct")
+        self.assertEqual(payload["metadata"]["timestamp_strategy"], "direct")
+
+    def test_transcribe_rejects_timestamp_strategy_without_alignment_backend(self) -> None:
+        result = self.runner.invoke(
+            main,
+            [
+                "transcribe",
+                str(self.audio_path),
+                "--timestamp-strategy",
+                "aligned",
+                "--align-backend",
+                "none",
+            ],
+        )
+
+        self.assertEqual(result.exit_code, 40)
+        self.assertIn("--timestamp-strategy aligned requires a non-none --align-backend", result.output)
 
     def test_transcribe_can_suppress_segment_output(self) -> None:
         with patch("whisper_omega.cli.main.TranscriptionService") as service_cls:

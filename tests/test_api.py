@@ -5,6 +5,7 @@ import unittest
 import wave
 
 from whisper_omega import PolicyConfig, ServiceConfig, TranscriptionResult, TranscriptionService, transcribe_file
+from whisper_omega.runtime.policy import UsageError
 
 
 class ApiTests(unittest.TestCase):
@@ -26,6 +27,22 @@ class ApiTests(unittest.TestCase):
 
         self.assertIsInstance(result, TranscriptionResult)
         self.assertIn(result.status, {"failure", "success", "degraded"})
+
+    def test_transcribe_file_rejects_incompatible_timestamp_strategy(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".wav") as handle:
+            with wave.open(handle.name, "wb") as wav_handle:
+                wav_handle.setnchannels(1)
+                wav_handle.setsampwidth(2)
+                wav_handle.setframerate(16000)
+                wav_handle.writeframes(b"\x00\x00" * 1600)
+
+            with self.assertRaises(UsageError):
+                transcribe_file(
+                    handle.name,
+                    device="cpu",
+                    timestamp_strategy="aligned",
+                    align_backend="none",
+                )
 
 
 if __name__ == "__main__":

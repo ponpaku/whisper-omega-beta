@@ -5,6 +5,15 @@ import shutil
 import subprocess
 import warnings
 
+TIMESTAMP_STRATEGY_CHOICES = (
+    "segment_only",
+    "direct",
+    "direct_microbatch",
+    "direct_microbatch_repair",
+    "aligned",
+    "hybrid_selective_align",
+)
+
 
 class UsageError(ValueError):
     """Raised when CLI arguments violate the contract."""
@@ -43,6 +52,37 @@ def validate_cli_constraints(
     if align_backend == "none" and "alignment" in normalized:
         raise UsageError("--align-backend none cannot satisfy alignment requirement")
     return normalized
+
+
+def resolve_timestamp_strategy(
+    timestamp_strategy: str | None,
+    *,
+    word_timestamps: bool,
+    align_backend: str,
+    required_features: list[str] | tuple[str, ...],
+) -> str:
+    if timestamp_strategy is None:
+        if not word_timestamps:
+            return "segment_only"
+        if "alignment" in required_features and align_backend != "none":
+            return "aligned"
+        return "direct"
+
+    if timestamp_strategy not in TIMESTAMP_STRATEGY_CHOICES:
+        raise UsageError(
+            f"--timestamp-strategy must be one of: {', '.join(TIMESTAMP_STRATEGY_CHOICES)}"
+        )
+    if timestamp_strategy == "segment_only" and word_timestamps:
+        raise UsageError("--timestamp-strategy segment_only requires --no-word-timestamps")
+    if timestamp_strategy in {"direct", "direct_microbatch", "direct_microbatch_repair", "aligned", "hybrid_selective_align"} and not word_timestamps:
+        raise UsageError(
+            f"--timestamp-strategy {timestamp_strategy} cannot be combined with --no-word-timestamps"
+        )
+    if timestamp_strategy in {"aligned", "hybrid_selective_align"} and align_backend == "none":
+        raise UsageError(
+            f"--timestamp-strategy {timestamp_strategy} requires a non-none --align-backend"
+        )
+    return timestamp_strategy
 
 
 def effective_device(device: str) -> str:
