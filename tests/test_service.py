@@ -218,6 +218,79 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(result.metadata.alignment_applied_segments, 0)
         self.assertEqual(result.metadata.alignment_skipped_segments, 1)
 
+    def test_direct_microbatch_degrades_when_stitch_conflicts_remain(self) -> None:
+        audio_path = self._write_wav(45000)
+
+        class OverlapShardBackend(ASRBackend):
+            name = "stub"
+
+            def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+                _ = (model_name, language, device, batch_size, word_timestamps)
+                with wave.open(str(audio_path), "rb") as handle:
+                    duration = handle.getnframes() / handle.getframerate()
+                return BackendTranscription(
+                    text="alpha bridge",
+                    language="en",
+                    segments=[Segment(id=0, start=0.0, end=duration, text="alpha bridge", speaker=None)],
+                    words=[
+                        Word(text="alpha", start=0.0, end=min(0.5, duration), speaker=None, confidence=0.9),
+                        Word(text="bridge", start=max(0.0, duration - 0.6), end=duration, speaker=None, confidence=0.8),
+                    ],
+                )
+
+        service = TranscriptionService(
+            ServiceConfig(
+                policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                timestamp_strategy="direct_microbatch",
+            ),
+            asr_backend=OverlapShardBackend(),
+        )
+        result = service.transcribe(audio_path)
+
+        self.assertEqual(result.status, "degraded")
+        self.assertEqual(result.error_code, "TIMESTAMP_STITCH_CONFLICT")
+        self.assertEqual(result.metadata.requested_timestamp_strategy, "direct_microbatch")
+        self.assertEqual(result.metadata.timestamp_strategy, "direct")
+        self.assertGreaterEqual(result.metadata.shard_count or 0, 2)
+        self.assertGreaterEqual(result.metadata.stitch_conflicts or 0, 1)
+
+    def test_direct_microbatch_repair_resolves_overlap_conflicts(self) -> None:
+        audio_path = self._write_wav(45000)
+
+        class RepairableShardBackend(ASRBackend):
+            name = "stub"
+
+            def transcribe(self, audio_path, model_name, language, device, batch_size=None, word_timestamps=True):
+                _ = (model_name, language, device, batch_size, word_timestamps)
+                with wave.open(str(audio_path), "rb") as handle:
+                    duration = handle.getnframes() / handle.getframerate()
+                return BackendTranscription(
+                    text="alpha bridge",
+                    language="en",
+                    segments=[Segment(id=0, start=0.0, end=duration, text="alpha bridge", speaker=None)],
+                    words=[
+                        Word(text="alpha", start=0.0, end=min(0.5, duration), speaker=None, confidence=0.7),
+                        Word(text="bridge", start=max(0.0, duration - 0.6), end=duration, speaker=None, confidence=0.95),
+                    ],
+                )
+
+        service = TranscriptionService(
+            ServiceConfig(
+                policy=PolicyConfig(runtime_policy="permissive", device="cpu"),
+                timestamp_strategy="direct_microbatch_repair",
+            ),
+            asr_backend=RepairableShardBackend(),
+        )
+        result = service.transcribe(audio_path)
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.metadata.timestamp_strategy, "direct_microbatch_repair")
+        self.assertEqual(result.metadata.timestamp_source, "stitched_direct")
+        self.assertEqual(result.metadata.timestamp_quality, "refined")
+        self.assertGreaterEqual(result.metadata.shard_count or 0, 2)
+        self.assertGreaterEqual(result.metadata.stitch_conflicts or 0, 1)
+        self.assertGreaterEqual(result.metadata.seam_repair_count or 0, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

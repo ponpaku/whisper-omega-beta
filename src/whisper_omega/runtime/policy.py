@@ -8,6 +8,8 @@ import warnings
 TIMESTAMP_STRATEGY_CHOICES = (
     "segment_only",
     "direct",
+    "direct_microbatch",
+    "direct_microbatch_repair",
     "aligned",
     "hybrid_selective_align",
 )
@@ -72,7 +74,7 @@ def resolve_timestamp_strategy(
         )
     if timestamp_strategy == "segment_only" and word_timestamps:
         raise UsageError("--timestamp-strategy segment_only requires --no-word-timestamps")
-    if timestamp_strategy in {"direct", "aligned", "hybrid_selective_align"} and not word_timestamps:
+    if timestamp_strategy in {"direct", "direct_microbatch", "direct_microbatch_repair", "aligned", "hybrid_selective_align"} and not word_timestamps:
         raise UsageError(
             f"--timestamp-strategy {timestamp_strategy} cannot be combined with --no-word-timestamps"
         )

@@ -7,6 +7,7 @@ import sys
 import os
 import importlib.util
 import time
+import tempfile
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,7 +25,7 @@ from whisper_omega.diarize.base import (
 )
 from whisper_omega.io.writers import write_json, write_srt, write_txt, write_vtt
 from whisper_omega.runtime.codes import CANONICAL_ISSUE_CODES
-from whisper_omega.runtime.models import BackendError, Fallback, Metadata, Timings, TranscriptionResult
+from whisper_omega.runtime.models import BackendError, Fallback, Metadata, Segment, Timings, TranscriptionResult, Word
 from whisper_omega.runtime.policy import PolicyConfig, cuda_available, effective_device, resolve_timestamp_strategy
 
 
@@ -217,6 +218,12 @@ class TranscriptionService:
             result.metadata.alignment_skipped_segments = len(result.segments)
             return result
 
+        if strategy == "direct_microbatch":
+            return self._apply_microbatch_timestamp_strategy(audio_path, result, repair=False)
+
+        if strategy == "direct_microbatch_repair":
+            return self._apply_microbatch_timestamp_strategy(audio_path, result, repair=True)
+
         if strategy == "aligned":
             return self._apply_alignment_timestamp_strategy(
                 audio_path=audio_path,
@@ -250,6 +257,169 @@ class TranscriptionService:
             message=f"timestamp strategy {strategy!r} is not implemented",
             failed_features=[],
             fallbacks=[],
+        )
+
+    def _apply_microbatch_timestamp_strategy(
+        self,
+        audio_path: Path,
+        result: TranscriptionResult,
+        *,
+        repair: bool,
+    ) -> TranscriptionResult:
+        shard_plan = _build_microbatch_plan(result.metadata.timings.audio_duration_ms)
+        result.metadata.overlap_ms = shard_plan.overlap_ms
+        result.metadata.shard_count = len(shard_plan.windows)
+        result.metadata.microbatch_count = len(shard_plan.windows)
+        result.metadata.seam_repair_count = 0
+        result.metadata.stitch_conflicts = 0
+        result.metadata.alignment_applied_segments = 0
+        result.metadata.alignment_skipped_segments = len(result.segments)
+        if len(shard_plan.windows) <= 1:
+            result.metadata.timestamp_strategy = "direct_microbatch_repair" if repair else "direct_microbatch"
+            result.metadata.timestamp_source = "direct"
+            result.metadata.timestamp_quality = "exact" if result.words else "segment_only"
+            return result
+
+        try:
+            shard_results = _run_microbatch_shards(
+                backend=self.asr_backend,
+                audio_path=audio_path,
+                model_name=self.config.model_name,
+                language=self.config.language,
+                device=result.metadata.actual_device,
+                batch_size=self.config.batch_size,
+                windows=shard_plan.windows,
+            )
+        except _MicrobatchError as exc:
+            return self._handle_microbatch_unavailable(
+                result=result,
+                code=exc.code,
+                message=exc.message,
+            )
+
+        stitched = _stitch_microbatch_results(shard_results, repair=repair)
+        result.metadata.timestamp_strategy = "direct_microbatch_repair" if repair else "direct_microbatch"
+        result.metadata.timestamp_source = "stitched_direct"
+        result.metadata.timestamp_quality = "refined" if repair else "estimated"
+        result.metadata.shard_count = len(shard_results)
+        result.metadata.microbatch_count = len(shard_results)
+        result.metadata.seam_repair_count = stitched.seam_repairs
+        result.metadata.stitch_conflicts = stitched.conflicts
+
+        if stitched.conflicts and not repair:
+            if self.config.policy.runtime_policy in {"strict", "strict-gpu"}:
+                return self._timestamp_strategy_failure(
+                    result=result,
+                    code="TIMESTAMP_STITCH_CONFLICT",
+                    message="microbatch stitching produced unresolved seam conflicts",
+                    failed_features=[],
+                    fallbacks=[],
+                )
+            degrade_to = "direct" if result.words else "segment_only"
+            return TranscriptionResult(
+                schema_version="1.0.0",
+                status="degraded",
+                text=result.text,
+                language=result.language,
+                segments=result.segments,
+                words=result.words if degrade_to == "direct" else [],
+                speakers=result.speakers,
+                metadata=result.metadata.copy_with(
+                    timestamp_strategy=degrade_to,
+                    timestamp_source="direct" if degrade_to == "direct" else "segments",
+                    timestamp_quality="exact" if degrade_to == "direct" else "segment_only",
+                    fallbacks=[
+                        *result.metadata.fallbacks,
+                        Fallback(
+                            type="quality",
+                            from_value="direct_microbatch",
+                            to_value=degrade_to,
+                            reason="TIMESTAMP_STITCH_CONFLICT",
+                        ),
+                    ],
+                ),
+                error_code="TIMESTAMP_STITCH_CONFLICT",
+                error_category="runtime",
+                backend_errors=[
+                    BackendError(
+                        backend=self.asr_backend.name,
+                        code="TIMESTAMP_STITCH_CONFLICT",
+                        category="runtime",
+                        message="microbatch stitching produced unresolved seam conflicts",
+                        retryable=True,
+                    )
+                ],
+            )
+
+        if stitched.conflicts and repair and self.config.policy.runtime_policy in {"strict", "strict-gpu"} and stitched.seam_repairs < stitched.conflicts:
+            return self._timestamp_strategy_failure(
+                result=result,
+                code="TIMESTAMP_SEAM_REPAIR_FAILED",
+                message="microbatch seam repair could not resolve all conflicts",
+                failed_features=[],
+                fallbacks=[],
+            )
+
+        return TranscriptionResult(
+            schema_version=result.schema_version,
+            status=result.status,
+            text=stitched.text,
+            language=result.language,
+            segments=stitched.segments,
+            words=stitched.words,
+            speakers=result.speakers,
+            metadata=result.metadata,
+        )
+
+    def _handle_microbatch_unavailable(
+        self,
+        *,
+        result: TranscriptionResult,
+        code: str,
+        message: str,
+    ) -> TranscriptionResult:
+        if self.config.policy.runtime_policy in {"strict", "strict-gpu"}:
+            return self._timestamp_strategy_failure(
+                result=result,
+                code=code,
+                message=message,
+                failed_features=[],
+                fallbacks=[],
+            )
+        degrade_to = "direct" if result.words else "segment_only"
+        return TranscriptionResult(
+            schema_version="1.0.0",
+            status="degraded",
+            text=result.text,
+            language=result.language,
+            segments=result.segments,
+            words=result.words if degrade_to == "direct" else [],
+            speakers=result.speakers,
+            metadata=result.metadata.copy_with(
+                timestamp_strategy=degrade_to,
+                timestamp_source="direct" if degrade_to == "direct" else "segments",
+                timestamp_quality="exact" if degrade_to == "direct" else "segment_only",
+                fallbacks=[
+                    *result.metadata.fallbacks,
+                    Fallback(
+                        type="quality",
+                        from_value=self.config.timestamp_strategy,
+                        to_value=degrade_to,
+                        reason=code,
+                    ),
+                ],
+            ),
+            error_code=code,
+            error_category="runtime",
+            backend_errors=[
+                BackendError(
+                    backend=self.asr_backend.name,
+                    code=code,
+                    category="runtime",
+                    message=message,
+                    retryable=True,
+                )
+            ],
         )
 
     def _apply_alignment_timestamp_strategy(
@@ -623,6 +793,228 @@ def _audio_duration_ms(audio_path: Path) -> int:
         return 0
 
     return 0
+
+
+@dataclass(slots=True)
+class _ShardWindow:
+    start: float
+    end: float
+
+
+@dataclass(slots=True)
+class _MicrobatchPlan:
+    windows: list[_ShardWindow]
+    overlap_ms: int
+
+
+@dataclass(slots=True)
+class _ShardTranscription:
+    window: _ShardWindow
+    text: str
+    segments: list[Segment]
+    words: list[Word]
+
+
+@dataclass(slots=True)
+class _StitchedTranscription:
+    text: str
+    segments: list[Segment]
+    words: list[Word]
+    conflicts: int
+    seam_repairs: int
+
+
+@dataclass(slots=True)
+class _MicrobatchError(Exception):
+    code: str
+    message: str
+
+
+def _build_microbatch_plan(audio_duration_ms: int) -> _MicrobatchPlan:
+    if audio_duration_ms <= 0:
+        return _MicrobatchPlan(windows=[_ShardWindow(start=0.0, end=0.0)], overlap_ms=400)
+    total_sec = audio_duration_ms / 1000.0
+    shard_sec = 20.0
+    overlap_sec = 0.4
+    if total_sec <= shard_sec:
+        return _MicrobatchPlan(windows=[_ShardWindow(start=0.0, end=total_sec)], overlap_ms=int(overlap_sec * 1000))
+    windows: list[_ShardWindow] = []
+    cursor = 0.0
+    while cursor < total_sec:
+        end = min(total_sec, cursor + shard_sec)
+        windows.append(_ShardWindow(start=cursor, end=end))
+        if end >= total_sec:
+            break
+        cursor = max(0.0, end - overlap_sec)
+    return _MicrobatchPlan(windows=windows, overlap_ms=int(overlap_sec * 1000))
+
+
+def _run_microbatch_shards(
+    *,
+    backend: ASRBackend,
+    audio_path: Path,
+    model_name: str,
+    language: str | None,
+    device: str,
+    batch_size: int | None,
+    windows: list[_ShardWindow],
+) -> list[_ShardTranscription]:
+    if audio_path.suffix.lower() != ".wav":
+        raise _MicrobatchError(
+            code="TIMESTAMP_STRATEGY_UNAVAILABLE",
+            message="microbatch timestamp strategies currently require WAV input",
+        )
+    shard_results: list[_ShardTranscription] = []
+    for window in windows:
+        shard_path = _write_wav_shard(audio_path, window)
+        try:
+            backend_result = backend.transcribe(
+                audio_path=shard_path,
+                model_name=model_name,
+                language=language,
+                device=device,
+                batch_size=batch_size,
+                word_timestamps=True,
+            )
+        finally:
+            shard_path.unlink(missing_ok=True)
+        shard_results.append(
+            _ShardTranscription(
+                window=window,
+                text=backend_result.text,
+                segments=[_offset_segment(segment, window.start) for segment in backend_result.segments],
+                words=[_offset_word(word, window.start) for word in backend_result.words],
+            )
+        )
+    return shard_results
+
+
+def _write_wav_shard(audio_path: Path, window: _ShardWindow) -> Path:
+    with wave.open(str(audio_path), "rb") as source:
+        sample_rate = source.getframerate()
+        sample_width = source.getsampwidth()
+        channels = source.getnchannels()
+        start_frame = max(0, int(window.start * sample_rate))
+        end_frame = max(start_frame, int(window.end * sample_rate))
+        source.setpos(start_frame)
+        frames = source.readframes(end_frame - start_frame)
+    handle = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    handle.close()
+    shard_path = Path(handle.name)
+    with wave.open(str(shard_path), "wb") as sink:
+        sink.setnchannels(channels)
+        sink.setsampwidth(sample_width)
+        sink.setframerate(sample_rate)
+        sink.writeframes(frames)
+    return shard_path
+
+
+def _offset_segment(segment: Segment, offset: float) -> Segment:
+    return Segment(
+        id=segment.id,
+        start=segment.start + offset,
+        end=segment.end + offset,
+        text=segment.text,
+        speaker=segment.speaker,
+    )
+
+
+def _offset_word(word: Word, offset: float) -> Word:
+    return Word(
+        text=word.text,
+        start=word.start + offset,
+        end=word.end + offset,
+        speaker=word.speaker,
+        confidence=word.confidence,
+    )
+
+
+def _stitch_microbatch_results(shards: list[_ShardTranscription], *, repair: bool) -> _StitchedTranscription:
+    merged_words: list[Word] = []
+    conflicts = 0
+    seam_repairs = 0
+    for shard in shards:
+        for word in shard.words:
+            if merged_words and word.start < merged_words[-1].end:
+                conflicts += 1
+                if repair:
+                    seam_repairs += 1
+                    candidate = _choose_repaired_word(merged_words[-1], word)
+                    merged_words[-1] = candidate
+                    continue
+            if merged_words and _looks_like_duplicate(merged_words[-1], word):
+                if repair:
+                    seam_repairs += 1
+                    merged_words[-1] = _choose_repaired_word(merged_words[-1], word)
+                continue
+            merged_words.append(word)
+    if merged_words:
+        text = " ".join(word.text for word in merged_words).strip()
+        segments = _segments_from_words(merged_words)
+    else:
+        text = " ".join(shard.text for shard in shards if shard.text).strip()
+        segments = _merge_segments(shards)
+    return _StitchedTranscription(
+        text=text,
+        segments=segments,
+        words=merged_words,
+        conflicts=conflicts,
+        seam_repairs=seam_repairs,
+    )
+
+
+def _looks_like_duplicate(previous: Word, current: Word) -> bool:
+    if previous.text != current.text:
+        return False
+    return abs(previous.start - current.start) <= 0.5 or current.start <= previous.end
+
+
+def _choose_repaired_word(previous: Word, current: Word) -> Word:
+    previous_score = previous.confidence if previous.confidence is not None else -1.0
+    current_score = current.confidence if current.confidence is not None else -1.0
+    if current_score > previous_score:
+        return current
+    if current_score == previous_score and current.end > previous.end:
+        return current
+    return previous
+
+
+def _segments_from_words(words: list[Word]) -> list[Segment]:
+    text = " ".join(word.text for word in words).strip()
+    return [
+        Segment(
+            id=0,
+            start=words[0].start,
+            end=words[-1].end,
+            text=text,
+            speaker=None,
+        )
+    ]
+
+
+def _merge_segments(shards: list[_ShardTranscription]) -> list[Segment]:
+    merged: list[Segment] = []
+    for shard in shards:
+        for segment in shard.segments:
+            if merged and segment.start < merged[-1].end:
+                merged[-1] = Segment(
+                    id=merged[-1].id,
+                    start=merged[-1].start,
+                    end=max(merged[-1].end, segment.end),
+                    text=" ".join(part for part in [merged[-1].text, segment.text] if part).strip(),
+                    speaker=merged[-1].speaker,
+                )
+            else:
+                merged.append(
+                    Segment(
+                        id=len(merged),
+                        start=segment.start,
+                        end=segment.end,
+                        text=segment.text,
+                        speaker=segment.speaker,
+                    )
+                )
+    return merged
 
 
 def _should_refine_timestamps(words) -> bool:
